@@ -11,7 +11,7 @@ requires-python = ">=3.13"
 dependencies = [
   "click",
   "mido",
-  "pygame",
+  "pygame-ce",
   "numpy",
   "sounddevice"
 ]
