@@ -19,6 +19,30 @@
 
 以下、`TODO-001-N` が作業単位、`#N` は要求書の項番。
 
+### 守るべき互換性（要求書「互換性の方針」）
+
+要求元が実際に使っているのは次だけ。**ここが壊れなければ、残りは自由に
+変えてよい。** 各作業の前後でこの表を確認する。
+
+| API |
+|---|
+| `Parser()` / `Parser.parse(midi_file, channel)` |
+| `Parser.mk_visual()` / `Parser.print_visual()` |
+| `NoteInfo`（`abs_time` / `channel` / `note` / `velocity` / `end_time` / `length()` / `__str__`） |
+| `Player()` / `Player.play(parsed, pos, sec_min, sec_max)` |
+| `Player.DEF_RATE` / `Player.SEC_MIN` / `Player.SEC_MAX` |
+
+特に注意する箇所:
+
+- TODO-001-5: `block` は**既定値付きの追加引数**にする
+  （`play(parsed, pos, sec_min, sec_max)` の呼び出しがそのまま通ること）
+- TODO-001-9: `print_visual()` を**消さない**。`format_visual()` を足して
+  `print_visual()` はその薄いラッパーにする
+- TODO-001-4: `Player()` 生成自体は引き続き成功すること
+  （音声デバイス不在で `__init__` が失敗するようにしない）
+- #4（TODO-001-3）と #7 は出力・戻り値の形が変わるが、要求元はタグ
+  `0.0.3` で固定しているので入れてよい
+
 ### 対応済み（要求 #2, #3, #7, #13）
 
 現状のコードを確認した結果、追加作業は不要。
