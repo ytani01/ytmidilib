@@ -19,29 +19,43 @@ uv sync                      # 依存関係の同期（dev含む）
 uv run ytmidilib parse FILE  # パーサ実行（-v で可視化, -c CH でチャンネル選択）
 uv run ytmidilib play FILE   # プレーヤー実行
 uv run ytmidilib wav FREQ    # 単音生成/再生（-m で FREQ を MIDIノート番号として扱う）
+uv run ytmidilib transpose SRC DST N  # 移調（--clip で範囲外を丸める）
 uv tool install .            # ローカルインストール
 ```
 
-### lint / 型チェック（必須）
+### テスト / lint / 型チェック（必須）
 
-**コードを変更したら、以下の3つを必ず全部通すこと。** どれか1つでも
-省略しない（3つとも別々の問題を検出する。例: `__init__` 内の `__class__`
-参照は mypy だけが、到達不能コードは basedpyright だけが検出した）。
-
-```bash
-uv run ruff check src/     # スタイル
-uv run mypy src/           # 型
-uv run basedpyright        # 型 + 到達可能性など（対象は pyproject の include）
-```
-
-現状 3つとも **エラー0・警告0** の状態を維持している。新しいコードで
-警告が出たら、抑制コメントで消すのではなく直す。
+**コードを変更したら、以下の4つを必ず全部通すこと。** どれか1つでも
+省略しない（lint 3つはそれぞれ別の問題を検出する。例: `__init__` 内の
+`__class__` 参照は mypy だけが、到達不能コードは basedpyright だけが
+検出した）。
 
 ```bash
-uv run pytest              # ※現状 tests/ ディレクトリは存在しない
+uv run pytest                    # テスト（設定は pyproject。tests/ が対象）
+uv run ruff check src/ tests/    # スタイル
+uv run mypy src/ tests/          # 型
+uv run basedpyright              # 型 + 到達可能性など（対象は pyproject の include）
 ```
+
+現状すべて **エラー0・警告0**、テストは全て成功の状態を維持している。
+新しいコードで警告が出たら、抑制コメントで消すのではなく直す。
 
 CI 設定は無いので、上記はローカルで手動実行する。
+
+### テストの方針
+
+`tests/` は **音声デバイスを一切使わない**（無い環境でも通る）。
+
+- MIDI ファイルはバイナリを置かず、`conftest.py` の fixture が `mido` で
+  組み立てる（`mk_midi_file` / `rich_midi_file`）
+- `pygame.mixer.init()` を通る経路（`Player.play()` / `Player.mk_wav()` /
+  `Wav.play()` / CLI の `play`）はテストしない。`Player` は
+  `snd_key()` など計算だけ、`Wav` は生成と `save()` まで
+- 再生ループ（`Player._play_main()`）も、実時間の待ちに依存するので対象外
+- CLI は `click.testing.CliRunner`（サブプロセスを起動しない）
+- **`my_logger.init_handler()` はロガーの `propagate` を False にする。**
+  CLI のテストがこれを通ると、以降のテストで `caplog` が何も拾えなく
+  なるため、`conftest.py` の autouse fixture が毎回戻している
 
 すべてのサブコマンドに `-d` / `--debug` があり、`my_logger` のレベルを
 DEBUG に切り替える。挙動の調査は基本これで足りる。
@@ -142,4 +156,5 @@ pygame の mixer はモノラル (`channels=1`) で初期化する。`Player` �
 
 - `pyproject.toml` の依存に `sounddevice` があるが、現状コードからは
   未使用（再生は pygame 経由）。
-- `tests/` は無く、`[tool.pytest.ini_options]` はコメントアウトされている。
+- カバレッジは `Player` の再生経路を除外しているぶん低く出る（全体で
+  8割程度）。**数値を上げるために再生をテストしない**（上の方針を参照）。

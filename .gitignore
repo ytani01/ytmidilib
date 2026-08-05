@@ -6,6 +6,10 @@ dist/
 wheels/
 *.egg-info
 
+# Test / coverage
+.pytest_cache/
+.coverage
+
 # Virtual environments
 .venv
 

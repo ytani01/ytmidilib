@@ -44,11 +44,12 @@ module = "click,loguru,loguru.*,pytest,pytest.*,blessed,blessed.*,mido,mido.*"
 ignore_missing_imports = true
 follow_untyped_imports = true
 
-# [tool.pytest.ini_options]
-# addopts = "-v --cov=tmr --cov-report=term-missing --cov-branch"
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --cov=ytmidilib --cov-report=term-missing --cov-branch"
 
 [tool.basedpyright]
-include = ["src"]
+include = ["src", "tests"]
 typeCheckingMode = "standard"
 reportMissingSuperCall = false
 reportPossiblyUnboundVariable = "none"
