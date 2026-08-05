@@ -44,9 +44,37 @@ class Player:
 
         self._rate = rate
 
+        self._snd: dict[tuple[int, float], pygame.mixer.Sound] = {}
+
+    def init_mixer(self) -> None:
+        """pygame の mixer を初期化する
+
+        音源生成/再生の直前に呼ばれる。初期化済みなら何もしないので、
+        他所（`WavApp` など）が先に初期化していても二重にはならない。
+        音声デバイスが無い環境では、ここで `pygame.error` になる。
+        """
+        if pygame.mixer.get_init():
+            self._log.debug('already initialized: %s', pygame.mixer.get_init())
+            return
+
+        self._log.debug('rate=%s', self._rate)
         pygame.mixer.init(frequency=self._rate, channels=1)
 
-        self._snd: dict[tuple[int, float], pygame.mixer.Sound] = {}
+    def close(self) -> None:
+        """mixer を終了し、生成済みの音源を捨てる"""
+        self._log.debug('')
+
+        self._snd = {}
+
+        if pygame.mixer.get_init():
+            pygame.mixer.quit()
+
+    def __enter__(self) -> "Player":
+        return self
+
+    def __exit__(self, exc_type: object, exc_value: object,
+                 traceback: object) -> None:
+        self.close()
 
     @staticmethod
     def within_range(num: float, n_min: float, n_max: float) -> float:
@@ -81,6 +109,8 @@ class Player:
                ) -> dict[tuple[int, float], pygame.mixer.Sound]:
         """再生に必要な音源データを、あらかじめ全て生成しておく
         """
+        self.init_mixer()
+
         for note_info in in_data:
             if note_info.velocity == 0:
                 continue

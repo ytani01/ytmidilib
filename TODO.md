@@ -90,14 +90,18 @@
 - CLI で従来の表示が欲しい場合は `-d` を付ける
 - 確認済み: `play` 実行時に `Player` からの出力が無いこと
 
-#### TODO-001-4. `pygame.mixer.init()` の遅延化（#5・改善）
+#### ~~TODO-001-4. `pygame.mixer.init()` の遅延化（#5・改善）~~ 完了
 
-- `Player.__init__()` から `pygame.mixer.init()` を外し、`play()` 冒頭
-  （または `mk_wav()`）で 1 回だけ初期化する
-- `close()` を追加し、`__enter__` / `__exit__` も付ける
-- 音声デバイス不在時は `play()` で分かるエラーになること
-- 注意: `WavApp` も `pygame.mixer.init()` を呼ぶので、二重初期化の扱いを
-  そろえる（初期化済みなら何もしない）
+- `Player.__init__()` から `pygame.mixer.init()` を外し、`init_mixer()` を
+  新設して `mk_wav()` 冒頭で呼ぶ（初期化済みなら何もしない）
+- `close()` を追加し、`__enter__` / `__exit__` も付けた
+- 音声デバイス不在時は `play()`（`mk_wav()`）で `pygame.error` になる
+- `WavApp` も `main()` の再生時のみ初期化するようにし、`end()` で
+  `pygame.mixer.quit()`。保存のみ（`-n`）なら音声デバイス不要になった
+- `MidiApp.end()` で `Player.close()` を呼ぶ
+- 確認済み: `Player()` 生成だけでは mixer が初期化されないこと、
+  `with Player()` で初期化 → 終了時に解放されること、
+  `parse` / `play` / `wav -n` が従来どおり動くこと
 
 #### TODO-001-5. 再生の停止・非同期化（#6・機能追加）
 

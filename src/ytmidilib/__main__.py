@@ -68,10 +68,10 @@ class MidiApp:
                           self._sec_min, self._sec_max)
 
     def end(self) -> None:
-        """ end
+        """ end """
+        self._log.debug('')
 
-        do nothing
-        """
+        self._player.close()
 
 
 class WavApp:
@@ -110,8 +110,6 @@ class WavApp:
             self._freq = note2freq(note)
             print(f'MIDI note: {note} -> freq = {self._freq:.3f} Hz')
 
-        pygame.mixer.init(frequency=self._rate, channels=1)
-
     def main(self) -> None:
         """main
         """
@@ -120,6 +118,10 @@ class WavApp:
         wav = Wav(self._freq, self._sec, self._rate, debug=self._dbg)
 
         if self._play_flag:
+            # 再生するときだけ初期化する(保存だけなら音声デバイス不要)
+            if not pygame.mixer.get_init():
+                pygame.mixer.init(frequency=self._rate, channels=1)
+
             wav.play(self._vol)
 
         if self._outfile:  # not empty (C10801)
@@ -132,6 +134,10 @@ class WavApp:
         Call at the end of program.
         """
         self._log.debug('doing ..')
+
+        if pygame.mixer.get_init():
+            pygame.mixer.quit()
+
         self._log.debug('done')
 
 
