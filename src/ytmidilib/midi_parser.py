@@ -66,7 +66,7 @@ class NoteInfo:
         Returns
         -------
         length: float
-            length of note [sec]
+            length of note [sec]。`end_time` が未設定 (None) の場合は 0.0
         """
         if self.end_time is None:
             return 0.0

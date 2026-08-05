@@ -5,7 +5,7 @@
 
 | 番号 | 内容 | 状態 |
 |---|---|---|
-| [TODO-001](#todo-001-ytstreetorgan-からの改善要求への対応) | `ytstreetorgan` からの改善要求への対応 | 進行中 |
+| [TODO-001](#todo-001-ytstreetorgan-からの改善要求への対応) | `ytstreetorgan` からの改善要求への対応 | 完了（タグ付け待ち） |
 
 ---
 
@@ -50,12 +50,11 @@
 - #2 `NoteInfo.end_time` — `None if end_time is None else round(end_time, 3)`
   になっており、`int` も通る（`midi_parser.py:41`）
 - #3 型注釈 — 公開 API に注釈あり。既定値 `None` も撤去済み
-- #7 戻り値の型 — `ParsedData(TypedDict)` を定義済み（`midi_parser.py:73`）
-  - ただし要求元の文書は `ParsedMidi` という名前を想定している。
-    **要判断:** 別名 `ParsedMidi = ParsedData` を足すか、名前を寄せるか、
-    このままとするか
-- #13 `length()` の docstring — `[sec]` に修正済み。`end_time is None` で
-  `0.0` を返す挙動になっているので、docstring にその旨を追記しておくと親切
+- #7 戻り値の型 — `TypedDict` を定義済み。
+  要求元の文書に合わせて **`ParsedMidi` に改名した**
+  （2026-08-06 ユーザー判断）
+- #13 `length()` の docstring — `[sec]` に修正済み。
+  `end_time is None` で `0.0` を返す旨も追記した
 
 ### やること
 
@@ -165,8 +164,10 @@
 
 ### 完了後
 
-- `uv run ruff check src/` / `uv run mypy src/` / `uv run basedpyright` を
-  すべて通す（エラー0・警告0 を維持）
-- 要求元はタグ `0.0.3` で固定しているので、新しいタグが必要
-  （#4 の出力変更・#5 の初期化タイミング変更を含むので、0.1.0 相当）
-- **タグ付けと push はユーザーが行う。** Claude は commit まで
+- ~~`uv run ruff check src/` / `uv run mypy src/` / `uv run basedpyright` を
+  すべて通す~~ 完了（エラー0・警告0）
+- ~~互換性の表の API がすべて通ることを確認~~ 完了
+- **残り: タグ付けと push。** 要求元はタグ `0.0.3` で固定しているので、
+  新しいタグが必要（#4 の出力変更・#5 の初期化タイミング変更・
+  `ParsedMidi` への改名を含むので、0.1.0 相当）。
+  **タグ付けと push はユーザーが行う。** Claude は commit まで
