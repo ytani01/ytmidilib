@@ -135,15 +135,18 @@
 - `__init__.py` の `__all__` に `write` / `transpose` /
   `DEF_TICKS_PER_BEAT` を追加
 
-#### TODO-001-7. ロギングをライブラリらしくする（#10・改善）
+#### ~~TODO-001-7. ロギングをライブラリらしくする（#10・改善）~~ 完了
 
-- `get_logger()` から `addHandler()` / `propagate = False` を外す。
-  レベル設定のみにする
-- ロガー名を `inspect.stack()` ベースから `__name__` ベースへ
-  （`get_logger()` の重さも解消される）
-- ハンドラの設定は `__main__.py` へ移す
-- 影響範囲: 全モジュールが `get_logger()` を使っているので、
-  CLI で従来どおりログが出ることを確認する
+- `get_logger()` から `addHandler()` / `propagate = False` を外し、
+  レベル設定のみにした
+- ロガー名を `inspect.stack()` ベースから、パッケージ名 (`ytmidilib.*`)
+  ベースへ（`get_logger()` の重さも解消）。`__name__` を渡された場合は
+  そのまま使う
+- ハンドラの設定は `my_logger.init_handler()` に切り出し、
+  `__main__.py` の click group から呼ぶ
+- 確認済み: CLI で従来どおりログが出る／`-d` で DEBUG が出る／
+  ライブラリとして import しただけではハンドラが付かない／
+  アプリ側の `logging.basicConfig()` の書式に従う
 
 #### TODO-001-8. パスを `str | os.PathLike[str]` に（#11・改善）
 

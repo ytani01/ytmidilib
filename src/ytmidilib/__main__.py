@@ -8,7 +8,7 @@ import click
 import pygame
 
 from . import Parser, Player, Wav, note2freq
-from .my_logger import get_logger
+from .my_logger import get_logger, init_handler
 
 
 class MidiApp:
@@ -151,6 +151,9 @@ midilib Apps
 @click.pass_context
 def cli(ctx) -> None:
     """ click group """
+    # ハンドラの設定は、アプリケーション側であるここで行う
+    init_handler()
+
     if ctx.invoked_subcommand is None:
         print(ctx.get_help())
 
