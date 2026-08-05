@@ -148,9 +148,13 @@
   ライブラリとして import しただけではハンドラが付かない／
   アプリ側の `logging.basicConfig()` の書式に従う
 
-#### TODO-001-8. パスを `str | os.PathLike[str]` に（#11・改善）
+#### ~~TODO-001-8. パスを `str | os.PathLike[str]` に（#11・改善）~~ 完了
 
 - `Parser.parse()` のシグネチャと docstring。`mido` 側はそのまま通る
+- ついでに `Wav.save()` も同様にした（`wave.open()` の型定義が `str`
+  しか受けないので `os.fspath()` を挟む）。`midi_writer.write()` は
+  最初から `str | os.PathLike[str]`
+- 確認済み: `pathlib.Path` で `parse` / `write` / `save` が通る
 
 #### TODO-001-9. `format_visual()` の追加（#12・改善）
 

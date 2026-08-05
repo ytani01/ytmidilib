@@ -9,6 +9,7 @@ __author__ = 'Yoichi Tanibayashi'
 __date__ = '2021/01'
 
 import copy
+import os
 from typing import Any, TypedDict
 
 import mido
@@ -209,7 +210,7 @@ class Parser:
 
         return out_data
 
-    def parse(self, midi_file: str,
+    def parse(self, midi_file: str | os.PathLike[str],
               channel: list[int] | tuple[int, ...] | None = None
               ) -> ParsedMidi:
         """
@@ -217,8 +218,8 @@ class Parser:
 
         Parameters
         ----------
-        midi_file: str
-            MIDI file name
+        midi_file: str or os.PathLike
+            MIDI file name (`pathlib.Path` も可)
         channel: list of int or None for all channels
             MIDI channel
 

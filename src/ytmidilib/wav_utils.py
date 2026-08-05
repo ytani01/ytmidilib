@@ -9,6 +9,7 @@ __author__ = 'Yoichi Tanibayashi'
 __date__ = '2020'
 
 import array
+import os
 import time
 import wave
 
@@ -94,17 +95,18 @@ class Wav:
 
         return np.array(sin_wave, dtype=np.int16)
 
-    def save(self, outfile: str) -> None:
+    def save(self, outfile: str | os.PathLike[str]) -> None:
         """音源データを wav形式 のファイルに保存する
 
         Parameters
         ----------
-        outfile: str
+        outfile: str or os.PathLike
             出力ファイル名
         """
         self._log.debug('outfile=%s', outfile)
 
-        with wave.open(outfile, 'wb') as w_write:
+        # wave.open() の型定義は str しか受け付けないので、変換して渡す
+        with wave.open(os.fspath(outfile), 'wb') as w_write:
             w_write.setparams((
                 1, 2, self._rate, len(self.wav), 'NONE', 'not compressed'))
             w_write.writeframes(array.array('h', self.wav).tobytes())
