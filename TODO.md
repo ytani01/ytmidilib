@@ -5,9 +5,9 @@
 
 | 番号 | 内容 | 状態 |
 |---|---|---|
-| [TODO-005](#todo-005-cli-サブコマンド-transpose-の追加) | CLI サブコマンド `transpose` の追加 | 未着手 |
+| [TODO-005](#todo-005-cli-サブコマンド-transpose-の追加) | CLI サブコマンド `transpose` の追加 | 完了 |
 | [TODO-004](#todo-004-要求書-2-通目への回答書を作成する) | 要求書 2 通目への回答書を作成する | 未着手 |
-| [TODO-003](#todo-003-midi-ファイルの移調要求書-2-通目) | MIDI ファイルの移調（要求書 2 通目） | 未着手 |
+| [TODO-003](#todo-003-midi-ファイルの移調要求書-2-通目) | MIDI ファイルの移調（要求書 2 通目） | 完了（タグ付け待ち） |
 | [TODO-002](#todo-002-改善要求への回答書を作成する) | 改善要求への回答書を作成する | 完了 |
 | [TODO-001](#todo-001-ytstreetorgan-からの改善要求への対応) | `ytstreetorgan` からの改善要求への対応 | 完了（タグ付け待ち） |
 
@@ -22,26 +22,32 @@
 ytmidilib transpose SRC DST N [--clip] [--drums] [-d]
 ```
 
-### やること
+### やること（完了）
 
-- `__main__.py` に `TransposeApp` を追加し、他のサブコマンドに合わせて
-  `main()` → `finally: end()` の形で呼ぶ
-- 引数・オプションは `transpose_file()` に 1 対 1 で対応させる
-  （`--clip` / `--drums` は既定 off ＝ ライブラリ側の既定と同じ）
-- `N` が負の値（`-2` など）でもオプションと誤解されないようにする
+- ~~`__main__.py` に `TransposeApp` を追加し、他のサブコマンドに合わせて
+  `main()` → `finally: end()` の形で呼ぶ~~
+- ~~引数・オプションは `transpose_file()` に 1 対 1 で対応させる~~
+  `--clip` / `-c`、`--drums` / `-D`（既定 off ＝ ライブラリ側の既定と同じ）
+- ~~`N` が負の値（`-2` など）でもオプションと誤解されないようにする~~
+  このコマンドだけ `ignore_unknown_options=True`
+  （`TRANSPOSE_CONTEXT_SETTINGS`）
+- 範囲外の `ValueError` は `click.ClickException` に包み、
+  `.. use --clip` を添えて 1 行で出す（トレースバックを出さない）
 
-### 確認方法
+### 確認方法（確認済み）
 
-- `ytmidilib transpose a.mid b.mid 2` で移調できる
-- `ytmidilib transpose a.mid b.mid -2` が通る（負の値）
-- `--clip` 無しで範囲外なら、エラーが分かる形で表示される
-- `-h` のヘルプが他のサブコマンドと同じ体裁
-- lint / 型チェック 3 種がエラー 0・警告 0
+- ~~`ytmidilib transpose a.mid b.mid 2` で移調できる~~
+- ~~`ytmidilib transpose a.mid b.mid -2` が通る（負の値）~~
+- ~~`--clip` 無しで範囲外なら、エラーが分かる形で表示される~~
+  `Error: note out of range: 60 + 100 = 160 (channel:0) .. use --clip`
+  （終了コード 1）
+- ~~`-h` のヘルプが他のサブコマンドと同じ体裁~~
+- ~~lint / 型チェック 3 種がエラー 0・警告 0~~
 
 ### 完了条件
 
-- CLI から移調できる
-- `ytmidilib -h` に `transpose` が出る
+- ~~CLI から移調できる~~ 完了
+- ~~`ytmidilib -h` に `transpose` が出る~~ 完了
 
 ---
 
@@ -114,9 +120,9 @@ running status や delta の符号化が変わりうる）。要求書の受け�
 挙がっている**メッセージの種類と数・トラック数・`ticks_per_beat`・`type`
 の一致**を確認基準とする。
 
-### やること
+### やること（完了）
 
-#### TODO-003-1. `transpose_file()` の新設（#1・機能追加・最優先）
+#### ~~TODO-003-1. `transpose_file()` の新設（#1・機能追加・最優先）~~ 完了
 
 `midi_writer.py` に追加する。
 
@@ -130,56 +136,60 @@ def transpose_file(
 ) -> None:
 ```
 
-- `note_on` / `note_off` の `note` だけをずらす。他は一切触らない
-- `src` / `dst` は パス と file-like（`io.BytesIO` 等）の両方を受ける
-- `__init__.py` の `__all__` に追加する
+- ~~`note_on` / `note_off` の `note` だけをずらす。他は一切触らない~~
+- ~~`src` / `dst` は パス と file-like（`io.BytesIO` 等）の両方を受ける~~
+- ~~`__init__.py` の `__all__` に追加する~~
+  （`transpose_file` に加えて `DRUM_CHANNEL` も公開した）
 
-#### TODO-003-2. `clip` 引数（#2・改善・高）
+#### ~~TODO-003-2. `clip` 引数（#2・改善・高）~~ 完了
 
-`transpose()` と `transpose_file()` の**両方**に同じ規則で足す。
+`transpose()` と `transpose_file()` の**両方**に同じ規則で足した。
 
-- 既定 `clip=False` = 範囲外があれば `ValueError`（現行どおり）
-- `clip=True` = 0〜127 に丸める。丸めたときは
-  **WARNING を 1 行**（音符ごとではなく「n 個の音を丸めた」）
-- 1 個も丸めなければ WARNING は出さない
+- ~~既定 `clip=False` = 範囲外があれば `ValueError`（現行どおり）~~
+- ~~`clip=True` = 0〜127 に丸める。丸めたときは **WARNING を 1 行**~~
+- ~~1 個も丸めなければ WARNING は出さない~~
 
-#### TODO-003-3. `drums` 引数（#3・改善・中）
+#### ~~TODO-003-3. `drums` 引数（#3・改善・中）~~ 完了
 
-- `drums=False`（既定）で **channel 9 をずらさない**
-- `drums=True` で全チャンネルをずらす
-- **`transpose()` / `transpose_file()` とも既定 `False`**（ユーザー判断）。
-  `transpose()` は 0.1.0 から挙動が変わるが、要求元は未使用
-- 範囲チェック・クリップの対象からも ch 9 を外す（ずらさないのだから
-  範囲外にもならない）
-- docstring に ch 9 の扱いを明記する
+- ~~`drums=False`（既定）で **channel 9 をずらさない**~~
+- ~~`drums=True` で全チャンネルをずらす~~
+- ~~**`transpose()` / `transpose_file()` とも既定 `False`**~~
+- ~~範囲チェック・クリップの対象からも ch 9 を外す~~
+- ~~docstring に ch 9 の扱いを明記する~~
 
-#### TODO-003-4. `write()` の docstring（#4・改善・低）
+判定は `_shift_note()`（モジュール内のヘルパー）に集約し、2 つの関数で
+意味論が食い違わないようにした。ch 9 の番号は定数 `DRUM_CHANNEL`。
+
+#### ~~TODO-003-4. `write()` の docstring（#4・改善・低）~~ 完了
 
 `NoteInfo` が持たないもの（`program_change` / `control_change` /
-`pitch_bend` / メタメッセージ / トラック構成 / テンポ変化）は
-**書き出されない**ことを列挙し、`transpose_file()` へ誘導する 1 行を足す。
+`pitch_bend` / メタメッセージ / トラック構成 / テンポ変化）を列挙し、
+`transpose_file()` へ誘導する行を足した。
 
-### 確認方法（tests/ が無いので手動）
+### 確認方法（tests/ が無いので手動）— 確認済み
 
-一時ディレクトリに検証スクリプトを置いて実行する。
+一時ディレクトリの検証スクリプトで、以下をすべて確認した。
 
-- テンポ変化・2 トラック・`program_change` / `control_change` を含む
-  MIDI を作り、`transpose_file()` に通して
-  **メッセージの種類と数・トラック数・`ticks_per_beat`・`type` が一致**し、
-  `note` だけが指定の半音数ずれていること
-- `io.BytesIO` で src / dst を往復できること
-- `clip=False` / 引数省略で、範囲外が `ValueError`（現行と同じ）
-- `clip=True` で 0〜127 に丸まり、WARNING が 1 行だけ出ること
-- ch 9 の `note` が `drums=False` で不変、`drums=True` でずれること
-- lint / 型チェック 3 種（ruff / mypy / basedpyright）がエラー 0・警告 0
+- ~~テンポ変化（2 つの `set_tempo`）・2 トラック・`program_change` /
+  `control_change` / `track_name` / `time_signature` を含む MIDI で、
+  メッセージの種類と数・トラック数・`ticks_per_beat`・`type` が一致し、
+  `note` だけが指定の半音数ずれていること~~
+- ~~`io.BytesIO` で src / dst を往復できること~~
+- ~~`clip=False` / 引数省略で、範囲外が `ValueError`~~
+- ~~`clip=True` で 0〜127 に丸まり、WARNING が 1 行だけ出ること~~
+  （丸めが起きなければ出ないことも確認）
+- ~~ch 9 の `note` が `drums=False` で不変、`drums=True` でずれること~~
+- ~~`transpose()`（`NoteInfo` 版）が元のリストを変更しないこと~~
+- ~~lint / 型チェック 3 種がエラー 0・警告 0~~
 
 ### 完了条件
 
-- 要求書 #1〜#4 の受け入れ条件をすべて満たす
-- 利用側が `import mido` せずに移調を完結できる
-- タグ付け・push は**ユーザーが行う**（`0.2.0` 想定）
+- ~~要求書 #1〜#4 の受け入れ条件をすべて満たす~~ 完了
+  （ただし「1 バイトも変わらない」は保証せず、メッセージ構成の一致で確認）
+- ~~利用側が `import mido` せずに移調を完結できる~~ 完了
+- **残り: タグ付け・push。** ユーザーが行う（`0.2.0` 想定）
 
-CLI は TODO-005、回答書は TODO-004 で行う。
+CLI は TODO-005（完了）、回答書は TODO-004 で行う。
 
 ---
 

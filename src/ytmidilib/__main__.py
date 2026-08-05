@@ -7,7 +7,7 @@ main for midi_tools
 import click
 import pygame
 
-from . import Parser, Player, Wav, note2freq
+from . import DRUM_CHANNEL, Parser, Player, Wav, note2freq, transpose_file
 from .my_logger import get_logger, init_handler
 
 
@@ -141,7 +141,47 @@ class WavApp:
         self._log.debug('done')
 
 
+class TransposeApp:
+    """ MIDIファイルを移調する """
+    def __init__(self, src: str, dst: str, n: int,
+                 clip: bool = False, drums: bool = False,
+                 debug: bool = False) -> None:
+        """ Constructor """
+        self._dbg = debug
+        self._log = get_logger(self.__class__.__name__, self._dbg)
+        self._log.debug('src=%s, dst=%s, n=%s', src, dst, n)
+        self._log.debug('clip=%s, drums=%s', clip, drums)
+
+        self._src = src
+        self._dst = dst
+        self._n = n
+        self._clip = clip
+        self._drums = drums
+
+    def main(self) -> None:
+        """ main """
+        self._log.debug('')
+
+        try:
+            transpose_file(self._src, self._dst, self._n,
+                           clip=self._clip, drums=self._drums)
+        except ValueError as e:
+            # 範囲外。--clip で丸められることを案内する
+            raise click.ClickException(f'{e} .. use --clip') from e
+
+        print(f'{self._src} -> {self._dst}: {self._n:+d} semitone(s)')
+
+    def end(self) -> None:
+        """ end """
+        self._log.debug('')
+
+
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
+# transpose は N に負の値 (-2 など) を取るので、
+# オプションと誤解されないように未知のオプションを引数として扱う
+TRANSPOSE_CONTEXT_SETTINGS = dict(CONTEXT_SETTINGS,
+                                  ignore_unknown_options=True)
 
 
 @click.group(invoke_without_command=True,
@@ -253,6 +293,34 @@ def wav(freq, outfile, midi_note_flag, vol, sec, rate,
     app = WavApp(freq, outfile, midi_note_flag, vol, sec, rate,
                  play_flag=not dont_play,
                  debug=debug)
+    try:
+        app.main()
+    finally:
+        log.debug('finally')
+        app.end()
+
+
+@cli.command(context_settings=TRANSPOSE_CONTEXT_SETTINGS, help='''
+MIDI transpose: SRC を N 半音(負なら下げる)移調して DST へ書き出す
+
+note 以外は変更しない
+''')
+@click.argument('src', type=click.Path(exists=True))
+@click.argument('dst', type=click.Path())
+@click.argument('n', type=int)
+@click.option('--clip', '-c', 'clip', is_flag=True, default=False,
+              help='clip note into 0..127 (default: error)')
+@click.option('--drums', '-D', 'drums', is_flag=True, default=False,
+              help=f'transpose channel {DRUM_CHANNEL} (drums), too')
+@click.option('--debug', '-d', 'dbg', is_flag=True, default=False,
+              help='debug flag')
+def transpose(src, dst, n, clip, drums, dbg) -> None:
+    """
+    transpose main
+    """
+    log = get_logger(__name__, dbg)
+
+    app = TransposeApp(src, dst, n, clip=clip, drums=drums, debug=dbg)
     try:
         app.main()
     finally:
