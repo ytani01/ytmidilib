@@ -118,16 +118,22 @@
   `is_playing()` が False になる／再度 `play()` できる／
   `play(parsed, pos, sec_min, sec_max)` の従来形が 6 秒ブロックする
 
-#### TODO-001-6. MIDI 書き出し（#8・機能追加）
+#### ~~TODO-001-6. MIDI 書き出し（#8・機能追加）~~ 完了
 
-- 新規 `midi_writer.py`（仮）
+- 新規 `midi_writer.py`
   - `write(midi_file, note_info, ticks_per_beat=480, tempo=500000) -> None`
   - `NoteInfo` を note_on / note_off に展開し、絶対秒 → tick へ戻す
-    （`mido.second2tick`）。同時刻イベントの delta=0 の並びに注意
-  - `transpose(note_info, n) -> list[NoteInfo]`（範囲外の扱いを決める。
-    クリップせず捨てる／例外／飽和のいずれか。**要判断**）
-- `parse()` → `write()` → `parse()` の往復で値が一致すること
-- `__init__.py` の `__all__` に追加
+    （`mido.second2tick`）。同時刻は消音 → 発音の順に並べ、delta=0 で続ける
+    （同じ note の再打鍵と衝突させないため）
+  - `transpose(note_info, n) -> list[NoteInfo]`。
+    **範囲外は `ValueError`**（2026-08-06 ユーザー判断）。1音でも
+    範囲外なら移調全体を失敗させる。元のリストは変更しない
+- 確認済み: 和音・同一 note の連打を含むデータで
+  `parse()` → `write()` → `parse()` が一致（既定 480/500000 に加え、
+  96/300000・960/700000 でも一致）。`transpose(+12)` が元を壊さないこと、
+  範囲外で `ValueError` になること
+- `__init__.py` の `__all__` に `write` / `transpose` /
+  `DEF_TICKS_PER_BEAT` を追加
 
 #### TODO-001-7. ロギングをライブラリらしくする（#10・改善）
 
