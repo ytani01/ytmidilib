@@ -70,12 +70,14 @@
   `set_tempo` 有りの既存ファイル（pygame の `MIDI_sample.mid`）で
   `parse -v` の出力が変更前と一致
 
-#### TODO-001-2. `set_end_time()` の例外処理（#9・不具合）
+#### ~~TODO-001-2. `set_end_time()` の例外処理（#9・不具合）~~ 完了
 
-- `except KeyError` → `except (KeyError, IndexError)`（`midi_parser.py:187`）
+- `except KeyError` → `except (KeyError, IndexError)`
 - 警告メッセージに channel / note / 時刻を含める
+- 確認済み: 対応する note_on が無い note_off を含む MIDI で、警告を出して
+  読み飛ばし、残りの note は正しく解析される
 
-#### TODO-001-3. `Player` の標準出力をやめる（#4・改善）
+#### ~~TODO-001-3. `Player` の標準出力をやめる（#4・改善）~~ 完了
 
 **方針: `print()` は DEBUG ログに置き換える**（要求の選択肢 1。
 コールバック `on_note` は採らない）。
@@ -84,7 +86,9 @@
   → `self._log.debug('%08.3f / %s', now, note_info)`
 - `play()` 末尾の `print('end music')` → `self._log.debug('end music')`
 - 既定（`debug=False`）では標準出力・標準エラーに何も出ない
+  - `mk_wav()` 後の `_log.info('len(snd)=...')` も DEBUG へ落とした
 - CLI で従来の表示が欲しい場合は `-d` を付ける
+- 確認済み: `play` 実行時に `Player` からの出力が無いこと
 
 #### TODO-001-4. `pygame.mixer.init()` の遅延化（#5・改善）
 

@@ -131,7 +131,7 @@ class Player:
             now = time.time() - my_clock_base
 
             self.play_sound(note_info, sec_min, sec_max)
-            print(f'{now:08.3f} / {note_info}')
+            self._log.debug('%08.3f / %s', now, note_info)
 
     def play(self, parsed_midi: ParsedData,
              pos_sec: float = 0.0,
@@ -167,7 +167,7 @@ class Player:
         data = parsed_midi['note_info']
 
         snd = self.mk_wav(data, sec_min, sec_max)
-        self._log.info('len(snd)=%s', len(snd))
+        self._log.debug('len(snd)=%s', len(snd))
 
         note_q: "queue.Queue[NoteInfo | None]" = queue.Queue()
 
@@ -221,4 +221,4 @@ class Player:
         th.join()
         time.sleep(.5)
 
-        print('end music')
+        self._log.debug('end music')
