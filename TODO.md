@@ -5,8 +5,181 @@
 
 | 番号 | 内容 | 状態 |
 |---|---|---|
+| [TODO-005](#todo-005-cli-サブコマンド-transpose-の追加) | CLI サブコマンド `transpose` の追加 | 未着手 |
+| [TODO-004](#todo-004-要求書-2-通目への回答書を作成する) | 要求書 2 通目への回答書を作成する | 未着手 |
+| [TODO-003](#todo-003-midi-ファイルの移調要求書-2-通目) | MIDI ファイルの移調（要求書 2 通目） | 未着手 |
 | [TODO-002](#todo-002-改善要求への回答書を作成する) | 改善要求への回答書を作成する | 完了 |
 | [TODO-001](#todo-001-ytstreetorgan-からの改善要求への対応) | `ytstreetorgan` からの改善要求への対応 | 完了（タグ付け待ち） |
+
+---
+
+## TODO-005: CLI サブコマンド `transpose` の追加
+
+要求書には無い、こちら側の追加。**TODO-003 の完了後に行う**
+（`transpose_file()` の薄いラッパーなので、先に本体が要る）。
+
+```
+ytmidilib transpose SRC DST N [--clip] [--drums] [-d]
+```
+
+### やること
+
+- `__main__.py` に `TransposeApp` を追加し、他のサブコマンドに合わせて
+  `main()` → `finally: end()` の形で呼ぶ
+- 引数・オプションは `transpose_file()` に 1 対 1 で対応させる
+  （`--clip` / `--drums` は既定 off ＝ ライブラリ側の既定と同じ）
+- `N` が負の値（`-2` など）でもオプションと誤解されないようにする
+
+### 確認方法
+
+- `ytmidilib transpose a.mid b.mid 2` で移調できる
+- `ytmidilib transpose a.mid b.mid -2` が通る（負の値）
+- `--clip` 無しで範囲外なら、エラーが分かる形で表示される
+- `-h` のヘルプが他のサブコマンドと同じ体裁
+- lint / 型チェック 3 種がエラー 0・警告 0
+
+### 完了条件
+
+- CLI から移調できる
+- `ytmidilib -h` に `transpose` が出る
+
+---
+
+## TODO-004: 要求書 2 通目への回答書を作成する
+
+出典: `docs/20260806c-ytmidilib-requests-2.md`（2026-08-06）
+
+TODO-003 の対応内容を、要求元 (`ytstreetorgan`) への回答書としてまとめる。
+TODO-002（`docs/20260806b-ytmidilib-responses.md`）と同じ体裁で、
+要求書の項番 #1〜#4 ごとに答える。
+
+### やること
+
+- `docs/` に回答書を新規作成する（日付＋用途が分かるファイル名）
+- 要求と違う判断をした箇所は理由を明記する
+  - 「1 バイトも変わらない」は保証しない（`mido` の再直列化のため）。
+    メッセージ構成の一致で確認したことを書く
+  - 実装は要求書のコード片ではなく、読み込んだ `MidiFile` を書き換えて
+    保存する方式（引き継ぎ漏れが起きないため）
+  - ch 9 は範囲チェック・クリップの対象からも外した（要求書に無い判断）
+  - `transpose()` の既定 `drums=False` により 0.1.0 から挙動が変わる
+- 要求書に無い追加（CLI サブコマンド `transpose`。TODO-005）を書く
+- 新しいタグ（`0.2.0` 想定）を書く
+
+### 完了条件
+
+- 要求書の #1〜#4 に漏れなく回答している
+- 回答書だけ読めば、要求元が移行作業を始められる
+
+---
+
+## TODO-003: MIDI ファイルの移調（要求書 2 通目）
+
+出典: `docs/20260806c-ytmidilib-requests-2.md`（2026-08-06、対象 0.1.0）
+
+要求は 4 件。**#1（`transpose_file()` の新設）が本体**で、#2（`clip`）と
+#3（`drums`）はその引数の設計、#4 は `write()` の docstring。
+
+### 守るべき互換性
+
+要求元が使っているのは TODO-001 と同じ表の API（`Parser` / `NoteInfo` /
+`Player`）のみ。**`transpose()` / `write()` は要求元未使用**なので、
+既定値の変更は要求元を壊さない。それでも `clip` は既定 `False`
+（= 現行どおり `ValueError`）にして、既存の挙動は維持する。
+
+### ユーザー判断（2026-08-06）
+
+- `drums` の既定は **`transpose()` / `transpose_file()` とも `False`**
+  （ch 9 をずらさない）。`transpose()` は 0.1.0 から挙動が変わる
+- 回答書は **TODO-004** に分ける
+- **CLI サブコマンド `transpose` を作る**（要求書には無い追加）
+
+### 設計方針
+
+- **元の `MidiFile` をその場で書き換えて保存する。**
+  要求書の案（新しい `MidiFile` を組み立て直す）ではなく、
+  `mido.MidiFile()` で読んだオブジェクトの `note_on` / `note_off` の
+  `note` だけを書き換えて `save()` する。`type` / `ticks_per_beat` /
+  `charset` / メタメッセージ / トラック構成が**自動的にそのまま**残り、
+  組み立て直しの取りこぼしが原理的に起きない
+- **file-like 対応は `str | os.PathLike[str]` かどうかで分岐する。**
+  パスなら `mido.MidiFile(filename=...)` / `save(filename=...)`、
+  それ以外は `file=` に渡す（`io.BytesIO` が通る）
+- **`mido` の型は公開 API に出さない**（引数も戻り値も `mido` 非依存）
+- 範囲外・ch 9 の判定は `transpose()` と共通のヘルパーに置き、
+  2 つの関数で意味論が食い違わないようにする
+
+**注意**: 「1 バイトも変わらない」は保証しない（`mido` の再直列化で
+running status や delta の符号化が変わりうる）。要求書の受け入れ条件に
+挙がっている**メッセージの種類と数・トラック数・`ticks_per_beat`・`type`
+の一致**を確認基準とする。
+
+### やること
+
+#### TODO-003-1. `transpose_file()` の新設（#1・機能追加・最優先）
+
+`midi_writer.py` に追加する。
+
+```python
+def transpose_file(
+    src: str | os.PathLike[str] | BinaryIO,
+    dst: str | os.PathLike[str] | BinaryIO,
+    n: int,
+    clip: bool = False,
+    drums: bool = False,
+) -> None:
+```
+
+- `note_on` / `note_off` の `note` だけをずらす。他は一切触らない
+- `src` / `dst` は パス と file-like（`io.BytesIO` 等）の両方を受ける
+- `__init__.py` の `__all__` に追加する
+
+#### TODO-003-2. `clip` 引数（#2・改善・高）
+
+`transpose()` と `transpose_file()` の**両方**に同じ規則で足す。
+
+- 既定 `clip=False` = 範囲外があれば `ValueError`（現行どおり）
+- `clip=True` = 0〜127 に丸める。丸めたときは
+  **WARNING を 1 行**（音符ごとではなく「n 個の音を丸めた」）
+- 1 個も丸めなければ WARNING は出さない
+
+#### TODO-003-3. `drums` 引数（#3・改善・中）
+
+- `drums=False`（既定）で **channel 9 をずらさない**
+- `drums=True` で全チャンネルをずらす
+- **`transpose()` / `transpose_file()` とも既定 `False`**（ユーザー判断）。
+  `transpose()` は 0.1.0 から挙動が変わるが、要求元は未使用
+- 範囲チェック・クリップの対象からも ch 9 を外す（ずらさないのだから
+  範囲外にもならない）
+- docstring に ch 9 の扱いを明記する
+
+#### TODO-003-4. `write()` の docstring（#4・改善・低）
+
+`NoteInfo` が持たないもの（`program_change` / `control_change` /
+`pitch_bend` / メタメッセージ / トラック構成 / テンポ変化）は
+**書き出されない**ことを列挙し、`transpose_file()` へ誘導する 1 行を足す。
+
+### 確認方法（tests/ が無いので手動）
+
+一時ディレクトリに検証スクリプトを置いて実行する。
+
+- テンポ変化・2 トラック・`program_change` / `control_change` を含む
+  MIDI を作り、`transpose_file()` に通して
+  **メッセージの種類と数・トラック数・`ticks_per_beat`・`type` が一致**し、
+  `note` だけが指定の半音数ずれていること
+- `io.BytesIO` で src / dst を往復できること
+- `clip=False` / 引数省略で、範囲外が `ValueError`（現行と同じ）
+- `clip=True` で 0〜127 に丸まり、WARNING が 1 行だけ出ること
+- ch 9 の `note` が `drums=False` で不変、`drums=True` でずれること
+- lint / 型チェック 3 種（ruff / mypy / basedpyright）がエラー 0・警告 0
+
+### 完了条件
+
+- 要求書 #1〜#4 の受け入れ条件をすべて満たす
+- 利用側が `import mido` せずに移調を完結できる
+- タグ付け・push は**ユーザーが行う**（`0.2.0` 想定）
+
+CLI は TODO-005、回答書は TODO-004 で行う。
 
 ---
 
