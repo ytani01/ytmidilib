@@ -4,27 +4,28 @@
 """
 main for midi_tools
 """
-import pygame
 import click
+import pygame
+
 from . import Parser, Player, Wav, note2freq
 from .my_logger import get_logger
 
 
-class MidiApp:  # pylint: disable=too-many-instance-attributes
-    """ MidiApp """
-    def __init__(self, midi_file,  # pylint: disable=too-many-arguments
-                 channel,
-                 parse_only=False,
-                 visual_flag=False,
-                 rate=Player.DEF_RATE,
-                 sec_min=Player.SEC_MIN, sec_max=Player.SEC_MAX,
-                 pos_sec=0,
-                 debug=False) -> None:
+class MidiApp:
+    """ MIDIファイルをパージングし、必要に応じて可視化/再生する """
+    def __init__(self, midi_file: str,
+                 channel: tuple[int, ...],
+                 parse_only: bool = False,
+                 visual_flag: bool = False,
+                 rate: int = Player.DEF_RATE,
+                 sec_min: float = Player.SEC_MIN,
+                 sec_max: float = Player.SEC_MAX,
+                 pos_sec: float = 0.0,
+                 debug: bool = False) -> None:
         """ Constructor """
         self._dbg = debug
         self._log = get_logger(self.__class__.__name__, self._dbg)
-        self._log.debug('midi_file=%s, channel=%s',
-                        midi_file, channel)
+        self._log.debug('midi_file=%s, channel=%s', midi_file, channel)
         self._log.debug('parse_only=%s, visual_flag=%s',
                         parse_only, visual_flag)
         self._log.debug('rate=%s', rate)
@@ -49,10 +50,9 @@ class MidiApp:  # pylint: disable=too-many-instance-attributes
 
         parsed_data = self._parser.parse(self._midi_file, self._channel)
 
-        self._log.debug('parsed_data=')
         if self._dbg or self._parse_only:
             for i, data in enumerate(parsed_data['note_info']):
-                print('(%4d) %s' % (i, data))
+                print(f'({i:4d}) {data}')
 
         print('channel_set=', parsed_data['channel_set'], flush=True)
 
@@ -74,20 +74,25 @@ class MidiApp:  # pylint: disable=too-many-instance-attributes
         """
 
 
-class WavApp:  # pylint: disable=too-many-instance-attributes
-    """ WavApp """
-    def __init__(self,  # pylint: disable=too-many-arguments
-                 freq, outfile, midi_note_flag, vol, sec,
-                 rate=Wav.DEF_RATE,
-                 play_flag=True,
-                 debug=False) -> None:
+class WavApp:
+    """ 指定周波数の音源を生成し、再生/保存する """
+    def __init__(self,
+                 freq: float, outfile: tuple[str, ...],
+                 midi_note_flag: bool, vol: float, sec: float,
+                 rate: int = Wav.DEF_RATE,
+                 play_flag: bool = True,
+                 debug: bool = False) -> None:
         """constructor
 
         Parameters
         ----------
+        freq: float
+            周波数 [Hz]。midi_note_flag が True の場合は MIDIノート番号
+        outfile: tuple of str
+            出力ファイル名(空なら保存しない)
         """
         self._dbg = debug
-        self._log = get_logger(__class__.__name__, self._dbg)
+        self._log = get_logger(self.__class__.__name__, self._dbg)
         self._log.debug('freq,vol,sec,rate=%s', (freq, vol, sec, rate))
         self._log.debug('outfile=%s', outfile)
         self._log.debug('midi_note_flag=%s', midi_note_flag)
@@ -95,28 +100,24 @@ class WavApp:  # pylint: disable=too-many-instance-attributes
 
         self._freq = freq
         self._outfile = outfile
-        self._midi_note_flag = midi_note_flag
         self._vol = vol
         self._sec = sec
         self._rate = rate
         self._play_flag = play_flag
 
-        if self._midi_note_flag:
-            note = self._freq
+        if midi_note_flag:
+            note = int(freq)
             self._freq = note2freq(note)
-            print('MIDI note: %d -> freq = %.3f Hz' % (
-                int(note), self._freq))
+            print(f'MIDI note: {note} -> freq = {self._freq:.3f} Hz')
 
         pygame.mixer.init(frequency=self._rate, channels=1)
 
-    def main(self):
+    def main(self) -> None:
         """main
         """
         self._log.debug('')
 
-        wav = Wav(self._freq,  # pylint: disable=redefined-outer-name
-                  self._sec, self._rate,
-                  debug=self._dbg)
+        wav = Wav(self._freq, self._sec, self._rate, debug=self._dbg)
 
         if self._play_flag:
             wav.play(self._vol)
@@ -126,7 +127,7 @@ class WavApp:  # pylint: disable=too-many-instance-attributes
 
         self._log.debug('done')
 
-    def end(self):
+    def end(self) -> None:
         """
         Call at the end of program.
         """
@@ -142,14 +143,10 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 midilib Apps
 ''')
 @click.pass_context
-def cli(ctx):
+def cli(ctx) -> None:
     """ click group """
-    subcmd = ctx.invoked_subcommand
-
-    if subcmd is None:
+    if ctx.invoked_subcommand is None:
         print(ctx.get_help())
-    else:
-        pass
 
 
 @cli.command(context_settings=CONTEXT_SETTINGS, help='''
@@ -189,17 +186,16 @@ MIDI player
               help='MIDI channel')
 @click.option('--rate', '-r', 'rate', type=int,
               default=Player.DEF_RATE,
-              help='sampling rate, default=%s Hz' % Player.DEF_RATE)
+              help=f'sampling rate, default={Player.DEF_RATE} Hz')
 @click.option('--sec_min', '--min', 'sec_min', type=float,
               default=Player.SEC_MIN,
-              help='min sound length, default=%s' % (Player.SEC_MIN))
+              help=f'min sound length, default={Player.SEC_MIN}')
 @click.option('--sec_max', '--max', 'sec_max', type=float,
               default=Player.SEC_MAX,
-              help='max sound length, default=%s' % (Player.SEC_MAX))
+              help=f'max sound length, default={Player.SEC_MAX}')
 @click.option('--debug', '-d', 'dbg', is_flag=True, default=False,
               help='debug flag')
-def play(midi_file,  # pylint: disable=too-many-arguments
-         pos_sec, channel, rate, sec_min, sec_max, dbg) -> None:
+def play(midi_file, pos_sec, channel, rate, sec_min, sec_max, dbg) -> None:
     """
     player main
     """
@@ -225,29 +221,25 @@ Wav format sound tool
               default=False,
               help='FREQ as MIDI note number')
 @click.option('--vol', '-v', 'vol', type=float, default=Wav.DEF_VOL,
-              help='volume <= %s, default=%s' % (
-                  Wav.VOL_MAX, Wav.DEF_VOL))
+              help=f'volume <= {Wav.VOL_MAX}, default={Wav.DEF_VOL}')
 @click.option('--sec', '-t', '-s', 'sec', type=float, default=Wav.DEF_SEC,
-              help='sec [sec], default=%s sec' % Wav.DEF_SEC)
+              help=f'sec [sec], default={Wav.DEF_SEC} sec')
 @click.option('--rate', '-r', 'rate', type=int, default=Wav.DEF_RATE,
-              help='Sampling reate, default=%s Hz' % Wav.DEF_RATE)
+              help=f'Sampling reate, default={Wav.DEF_RATE} Hz')
 @click.option('--dont_play', '-n', 'dont_play', is_flag=True,
               default=False,
               help='dont\'t play flag')
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
-def wav(freq, outfile,  # pylint: disable=too-many-arguments
-        midi_note_flag,
-        vol, sec, rate,
-        dont_play,
-        debug):
+def wav(freq, outfile, midi_note_flag, vol, sec, rate,
+        dont_play, debug) -> None:
     """サンプル起動用メイン関数
     """
-    _log = get_logger(__name__, debug)
-    _log.debug('freq,vol,sec,rate=%s', (freq, vol, sec, rate))
-    _log.debug('outfile=%s', outfile)
-    _log.debug('midi_note_flag=%s', midi_note_flag)
-    _log.debug('dont_play=%s', dont_play)
+    log = get_logger(__name__, debug)
+    log.debug('freq,vol,sec,rate=%s', (freq, vol, sec, rate))
+    log.debug('outfile=%s', outfile)
+    log.debug('midi_note_flag=%s', midi_note_flag)
+    log.debug('dont_play=%s', dont_play)
 
     app = WavApp(freq, outfile, midi_note_flag, vol, sec, rate,
                  play_flag=not dont_play,
@@ -255,7 +247,7 @@ def wav(freq, outfile,  # pylint: disable=too-many-arguments
     try:
         app.main()
     finally:
-        _log.debug('finally')
+        log.debug('finally')
         app.end()
 
 

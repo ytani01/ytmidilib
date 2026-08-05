@@ -7,18 +7,21 @@ MIDI player
 __author__ = 'Yoichi Tanibayashi'
 __date__ = '2020'
 
-import time
-import threading
 import queue
+import threading
+import time
+
 import pygame
-from .wav_utils import Wav
+
+from .midi_parser import NoteInfo, ParsedData
 from .midi_utils import note2freq
 from .my_logger import get_logger
+from .wav_utils import Wav
 
 
 class Player:
     """
-    MIDI parser for Music Box
+    パージング済みのMIDIデータを、sin波の音源で再生する
     """
     DEF_RATE = 22050  # Hz .. sampling rate
 
@@ -27,40 +30,41 @@ class Player:
 
     FIRST_DELAY_MAX = 3  # sec
 
-    def __init__(self, rate=DEF_RATE, debug=False):
+    def __init__(self, rate: int = DEF_RATE, debug: bool = False) -> None:
         """ Constructor
 
         Parameters
         ----------
-        midi_file: str
-            file name of MIDI file
+        rate: int
+            サンプリングレート [Hz]
         """
         self._dbg = debug
-        self.__log = get_logger(__class__.__name__, self._dbg)
-        self.__log.debug('rate=%s', rate)
+        self._log = get_logger(self.__class__.__name__, self._dbg)
+        self._log.debug('rate=%s', rate)
 
         self._rate = rate
 
-        self._sec_min = self.SEC_MIN
-        self._sec_max = self.SEC_MAX
-
         pygame.mixer.init(frequency=self._rate, channels=1)
 
-        self._snd = {}
+        self._snd: dict[tuple[int, float], pygame.mixer.Sound] = {}
 
     @staticmethod
-    def within_range(num, n_min, n_max):
+    def within_range(num: float, n_min: float, n_max: float) -> float:
         """
-        keep n within range
+        keep num within range
         """
         return min(max(num, n_min), n_max)
 
-    def snd_key(self, note_data, sec_min, sec_max):
-        """
+    def snd_key(self, note_data: NoteInfo,
+                sec_min: float, sec_max: float) -> tuple[int, float]:
+        """音源キャッシュのキーを求める
+
+        長さを丸めることで、生成する音源の種類数を抑える。
+
         Returns
         -------
-        key: tuple of int
-            (note_num, sec)
+        key: tuple
+            (note_num, 丸めた長さ)
         """
         sec = self.within_range(note_data.length(), sec_min, sec_max)
 
@@ -70,23 +74,21 @@ class Player:
         else:
             key_sec = round(sec, 2)
 
-        key = (note_data.note, key_sec)
-        return key
+        return (note_data.note, key_sec)
 
-    def mk_wav(self, in_data, sec_min, sec_max):
+    def mk_wav(self, in_data: list[NoteInfo],
+               sec_min: float, sec_max: float
+               ) -> dict[tuple[int, float], pygame.mixer.Sound]:
+        """再生に必要な音源データを、あらかじめ全て生成しておく
         """
-        make sound data
-        """
-        for i, note_info in enumerate(in_data):
+        for note_info in in_data:
             if note_info.velocity == 0:
                 continue
 
             key = self.snd_key(note_info, sec_min, sec_max)
 
-            if key in self._snd.keys():
+            if key in self._snd:
                 continue
-
-            # self.__log.debug('(%4d) new key: %s', i, key)
 
             freq = note2freq(note_info.note)
             sec = self.within_range(note_info.length(), sec_min, sec_max)
@@ -97,25 +99,25 @@ class Player:
 
         return self._snd
 
-    def play_sound(self, note_info, sec_min, sec_max) -> None:
+    def play_sound(self, note_info: NoteInfo,
+                   sec_min: float, sec_max: float) -> None:
         """
         play sound
         """
         key = self.snd_key(note_info, sec_min, sec_max)
 
         snd = self._snd[key]
-        vol = note_info.velocity / 128 / 8
-        # maxtime = int(sec_max * self.SND_PLAY_FACTOR)
-
-        snd.set_volume(vol)
-        # snd.play(fade_ms=5, maxtime=maxtime)
+        snd.set_volume(note_info.velocity / 128 / 8)
         snd.play()
 
-    def play_th(self, note_q, sec_min, sec_max):
+    def play_th(self, note_q: "queue.Queue[NoteInfo | None]",
+                sec_min: float, sec_max: float) -> None:
         """
         play thread
+
+        キューから受け取ったnoteを発音する。None で終了。
         """
-        my_clock_base = -1
+        my_clock_base = -1.0
 
         while True:
             note_info = note_q.get()
@@ -129,73 +131,73 @@ class Player:
             now = time.time() - my_clock_base
 
             self.play_sound(note_info, sec_min, sec_max)
-            print('%08.3f / %s' % (now, note_info))
+            print(f'{now:08.3f} / {note_info}')
 
-    def play(self, parsed_midi,  # pylint: disable=too-many-locals
-             pos_sec=0.0,
-             sec_min=SEC_MIN, sec_max=SEC_MAX) -> None:
+    def play(self, parsed_midi: ParsedData,
+             pos_sec: float = 0.0,
+             sec_min: float = SEC_MIN, sec_max: float = SEC_MAX) -> None:
         """
         play parsed midi data
 
+        メインスレッドが time.sleep() でスケジューリングし、
+        実際の発音はワーカースレッドが行う。
+        理想時刻と実時刻のずれ(clock_delay)を次のsleepから引くことで、
+        ずれの累積を防ぐ。
+
         Parameters
         ----------
-        parsed_data: {
+        parsed_midi: {
             'channel_set': set of int,
             'note_info': list of NoteInfo
         }
         pos_sec: float
             seek position in sec
-        sec_min: int
+        sec_min: float
             min sound length
-        sec_max: int
+        sec_max: float
             max sound length
         """
-        self.__log.debug('parsed_midi[channel_set]=%s,',
-                         parsed_midi['channel_set'])
-        self.__log.debug('length of parsed_midi[data]=%s',
-                         len(parsed_midi['note_info']))
-        self.__log.debug('pos_sec=%s', pos_sec)
-        self.__log.debug('sec: %s .. %s', sec_min, sec_max)
+        self._log.debug('parsed_midi[channel_set]=%s,',
+                        parsed_midi['channel_set'])
+        self._log.debug('length of parsed_midi[note_info]=%s',
+                        len(parsed_midi['note_info']))
+        self._log.debug('pos_sec=%s', pos_sec)
+        self._log.debug('sec: %s .. %s', sec_min, sec_max)
 
         data = parsed_midi['note_info']
 
-        snd = self.mk_wav(parsed_midi['note_info'], sec_min, sec_max)
-        self.__log.info('len(snd)=%s', len(snd))
+        snd = self.mk_wav(data, sec_min, sec_max)
+        self._log.info('len(snd)=%s', len(snd))
 
-        abs_time = 0
+        note_q: "queue.Queue[NoteInfo | None]" = queue.Queue()
 
-        note_q: queue.Queue = queue.Queue()
-
-        th = threading.Thread(  # pylint: disable=invalid-name
+        th = threading.Thread(
             target=self.play_th,
             args=(note_q, sec_min, sec_max),
             daemon=True)
         th.start()
 
+        abs_time = 0.0
         my_clock_base = -1.0
-        now = 0.0
         clock_delay = 0.0
 
         for i, note_info in enumerate(data):
             if note_info.abs_time < pos_sec:
                 continue
 
-            self.__log.debug('(%4d) %s', i, note_info)
+            self._log.debug('(%4d) %s', i, note_info)
 
             delay = note_info.abs_time - abs_time
-            self.__log.debug('delay=%s', delay)
+            self._log.debug('delay=%s', delay)
 
             if i == 0 and delay > self.FIRST_DELAY_MAX:
-                self.__log.warning('delay:%s too long ..', delay)
+                self._log.warning('delay:%s too long ..', delay)
                 delay = self.FIRST_DELAY_MAX
-                self.__log.warning('[fix] delay=%s', delay)
+                self._log.warning('[fix] delay=%s', delay)
 
             if delay > 0:
                 delay -= clock_delay  # time adjustment
-                if delay <= 0:
-                    delay = 0.001
-
-                time.sleep(delay)
+                time.sleep(max(delay, 0.001))
 
             # calc clock_delay
             if my_clock_base < 0:
@@ -204,11 +206,11 @@ class Player:
             now = time.time() - my_clock_base
 
             clock_delay = now - note_info.abs_time
-            self.__log.debug('%8.3f / %8.3f clock_delay=%s',
-                             now, note_info.abs_time, clock_delay)
+            self._log.debug('%8.3f / %8.3f clock_delay=%s',
+                            now, note_info.abs_time, clock_delay)
 
             abs_time = note_info.abs_time
-            self.__log.debug('abs_time=%s', abs_time)
+            self._log.debug('abs_time=%s', abs_time)
 
             if note_info.velocity == 0:
                 continue

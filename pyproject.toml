@@ -40,7 +40,7 @@ python_version = "3.13"
 check_untyped_defs = true
 
 [[tool.mypy.overrides]]
-module = "click,loguru,loguru.*,pytest,pytest.*,blessed,blessed.*"
+module = "click,loguru,loguru.*,pytest,pytest.*,blessed,blessed.*,mido,mido.*"
 ignore_missing_imports = true
 follow_untyped_imports = true
 
@@ -48,7 +48,8 @@ follow_untyped_imports = true
 # addopts = "-v --cov=tmr --cov-report=term-missing --cov-branch"
 
 [tool.basedpyright]
-typeCheckingMode = "standard" 
+include = ["src"]
+typeCheckingMode = "standard"
 reportMissingSuperCall = false
 reportPossiblyUnboundVariable = "none"
 reportMissingImports = "none"
