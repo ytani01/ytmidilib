@@ -37,13 +37,14 @@
 
 優先度順。TODO-001-1 は先に単独でコミットする。
 
-#### TODO-001-1. tempo 既定値 500000 を適用する（#1・不具合・最優先）
+#### ~~TODO-001-1. tempo 既定値 500000 を適用する（#1・不具合・最優先）~~ 完了
 
-- `Parser.parse1()` の `cur_tempo = None` → `cur_tempo = 500000`
-  （`mido.bpm2tempo(120)`。MIDI 仕様の既定値）
-- `if cur_tempo:` の分岐は不要になるので整理する
-- 確認: `set_tempo` 無し・480tpb・四分音符の MIDI で `length()` == 0.5、
-  `set_tempo` 有りの既存ファイルで結果が変わらないこと
+- `Parser.parse1()` の `cur_tempo = None` → `cur_tempo = DEFAULT_TEMPO`
+  （= 500000。`mido.bpm2tempo(120)`。MIDI 仕様の既定値）
+- `if cur_tempo:` の分岐を撤去
+- 確認済み: `set_tempo` 無し・480tpb・四分音符の MIDI で `length()` == 0.5、
+  `set_tempo` 有りの既存ファイル（pygame の `MIDI_sample.mid`）で
+  `parse -v` の出力が変更前と一致
 
 #### TODO-001-2. `set_end_time()` の例外処理（#9・不具合）
 

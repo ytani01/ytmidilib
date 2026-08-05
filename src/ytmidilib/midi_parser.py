@@ -15,6 +15,9 @@ import mido
 
 from .my_logger import get_logger
 
+DEFAULT_TEMPO = 500000
+"""MIDI 仕様の既定テンポ [usec/beat]。120 BPM 相当 (mido.bpm2tempo(120))。"""
+
 
 class NoteInfo:
     """parsed MIDI data entity
@@ -131,11 +134,12 @@ class Parser:
         channel_set: set[int] = set()
         out_data: list[NoteInfo] = []
         abs_time = 0.0
-        cur_tempo = None
+        # MIDI 仕様の既定テンポ (120 BPM)。
+        # set_tempo が無いファイルでも正しい秒数になるようにする。
+        cur_tempo = DEFAULT_TEMPO
 
         for msg in merged_tracks:
-            if cur_tempo:
-                abs_time += mido.tick2second(msg.time, tpb, cur_tempo)
+            abs_time += mido.tick2second(msg.time, tpb, cur_tempo)
 
             if msg.type == 'set_tempo':
                 cur_tempo = msg.tempo
