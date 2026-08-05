@@ -73,7 +73,7 @@ class NoteInfo:
         return self.end_time - self.abs_time
 
 
-class ParsedData(TypedDict):
+class ParsedMidi(TypedDict):
     """`Parser.parse()` の戻り値"""
     channel_set: set[int]
     note_info: list[NoteInfo]
@@ -211,7 +211,7 @@ class Parser:
 
     def parse(self, midi_file: str,
               channel: list[int] | tuple[int, ...] | None = None
-              ) -> ParsedData:
+              ) -> ParsedMidi:
         """
         parse MIDI data
 

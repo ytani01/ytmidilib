@@ -13,7 +13,7 @@ import time
 
 import pygame
 
-from .midi_parser import NoteInfo, ParsedData
+from .midi_parser import NoteInfo, ParsedMidi
 from .midi_utils import note2freq
 from .my_logger import get_logger
 from .wav_utils import Wav
@@ -169,7 +169,7 @@ class Player:
             self.play_sound(note_info, sec_min, sec_max)
             self._log.debug('%08.3f / %s', now, note_info)
 
-    def play(self, parsed_midi: ParsedData,
+    def play(self, parsed_midi: ParsedMidi,
              pos_sec: float = 0.0,
              sec_min: float = SEC_MIN, sec_max: float = SEC_MAX,
              block: bool = True) -> None:
