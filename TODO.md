@@ -156,11 +156,12 @@
   最初から `str | os.PathLike[str]`
 - 確認済み: `pathlib.Path` で `parse` / `write` / `save` が通る
 
-#### TODO-001-9. `format_visual()` の追加（#12・改善）
+#### ~~TODO-001-9. `format_visual()` の追加（#12・改善）~~ 完了
 
 - `format_visual(v_data, channel_set) -> str` を新設し、
-  `print_visual()` はそれを `print()` するだけにする
-- `_print_note_ruler()` も文字列を返す形へ（`_format_note_ruler()`）
+  `print_visual()` はそれを `print()` するだけにした
+- `_print_note_ruler()` を `_format_note_ruler()`（`list[str]` を返す）へ
+- 確認済み: `parse -v` の出力が変更前と完全一致（diff で確認）
 
 ### 完了後
 

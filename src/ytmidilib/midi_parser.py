@@ -348,18 +348,33 @@ class Parser:
             'data': v_data,
         }
 
-    def _print_note_ruler(self, note_min: int, note_max: int) -> None:
-        """ノート番号を縦3行で表示する"""
-        for i in [0, 1, 2]:
-            digits = ''.join(f'{n:03d}'[i] for n in range(note_min, note_max+1))
-            print(f'{" ":8}|{digits}|')
+    def _format_note_ruler(self, note_min: int, note_max: int) -> list[str]:
+        """ノート番号を縦3行で表す
 
-    def print_visual(self, v_data: VisualData, channel_set: set[int]) -> None:
+        Returns
+        -------
+        lines: list of str
+            3行
         """
+        return [
+            f'{" ":8}|'
+            + ''.join(f'{n:03d}'[i] for n in range(note_min, note_max+1))
+            + '|'
+            for i in [0, 1, 2]
+        ]
+
+    def format_visual(self, v_data: VisualData, channel_set: set[int]) -> str:
+        """可視化データを文字列に整形する
+
         Parameters
         ----------
         v_data: VisualData
         channel_set: set of int
+
+        Returns
+        -------
+        text: str
+            末尾に改行は付かない
         """
         note_min = v_data['note_min']
         note_max = v_data['note_max']
@@ -368,17 +383,34 @@ class Parser:
         self._log.debug('channel_set=%s', channel_set)
 
         border = '--------+' + '-' * (note_max - note_min + 1) + '+'
+        ruler = self._format_note_ruler(note_min, note_max)
 
-        self._print_note_ruler(note_min, note_max)
-        print(border)
+        lines: list[str] = []
+        lines += ruler
+        lines.append(border)
 
         for v_ent in v_data['data']:
-            print(f'{v_ent["abs_time"]:08.3f}|{v_ent["chr"]}|')
+            lines.append(f'{v_ent["abs_time"]:08.3f}|{v_ent["chr"]}|')
 
-        print(border)
-        self._print_note_ruler(note_min, note_max)
+        lines.append(border)
+        lines += ruler
 
-        print()
+        lines.append('')
 
         for c in sorted(channel_set):
-            print(f'CH({c:2d}): {self.V_CHR_START[c]}--{self.V_CHR_STOP[c]}')
+            lines.append(
+                f'CH({c:2d}): {self.V_CHR_START[c]}--{self.V_CHR_STOP[c]}')
+
+        return '\n'.join(lines)
+
+    def print_visual(self, v_data: VisualData, channel_set: set[int]) -> None:
+        """可視化データを標準出力へ表示する
+
+        `format_visual()` の薄いラッパー。
+
+        Parameters
+        ----------
+        v_data: VisualData
+        channel_set: set of int
+        """
+        print(self.format_visual(v_data, channel_set))
