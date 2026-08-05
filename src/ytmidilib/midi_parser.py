@@ -188,8 +188,13 @@ class Parser:
 
             try:
                 idx2 = note_start[key].pop(0)
-            except KeyError as ex:
-                self._log.warning('%s:%s .. ignored', type(ex).__name__, ex)
+            except (KeyError, IndexError) as ex:
+                # 対応する note_on が無い note_off。壊れたファイルでは
+                # 起きうるので、どの音かが分かる形で警告して読み飛ばす。
+                self._log.warning(
+                    '%s: no note_on for'
+                    ' channel:%02d note:%03d at %08.3f .. ignored',
+                    type(ex).__name__, ent.channel, ent.note, ent.abs_time)
                 continue
 
             out_data[idx2].end_time = ent.abs_time
