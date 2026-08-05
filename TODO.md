@@ -103,13 +103,20 @@
   `with Player()` で初期化 → 終了時に解放されること、
   `parse` / `play` / `wav -n` が従来どおり動くこと
 
-#### TODO-001-5. 再生の停止・非同期化（#6・機能追加）
+#### ~~TODO-001-5. 再生の停止・非同期化（#6・機能追加）~~ 完了
 
 - `stop()` — `threading.Event` を見て、次の音符の前でループを抜ける。
-  ワーカースレッドにも終了を伝える
-- `play(..., block: bool = True)` — `False` で別スレッド再生
+  ワーカースレッドにも終了を伝え、`pygame.mixer.stop()` で鳴っている音も
+  止める。待ちは `sleep()` ではなく `Event.wait()` にして反応を良くした
+- `play(..., block: bool = True)` — `False` で別スレッド再生。
+  音源生成 (`mk_wav()`) は `block` によらず呼び出し側で先に済ませるので、
+  音声デバイス不在のエラーは `play()` から見える
 - `is_playing() -> bool`
+- 再生中の `play()` は `RuntimeError`（`stop()` を先に呼ぶ）
 - `stop()` 後に再度 `play()` できること（Event を毎回クリアする）
+- 確認済み: 6秒の MIDI で、`block=False` が即座に戻る／1秒で `stop()` でき
+  `is_playing()` が False になる／再度 `play()` できる／
+  `play(parsed, pos, sec_min, sec_max)` の従来形が 6 秒ブロックする
 
 #### TODO-001-6. MIDI 書き出し（#8・機能追加）
 

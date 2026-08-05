@@ -46,6 +46,9 @@ class Player:
 
         self._snd: dict[tuple[int, float], pygame.mixer.Sound] = {}
 
+        self._stop_event = threading.Event()
+        self._play_thread: threading.Thread | None = None
+
     def init_mixer(self) -> None:
         """pygame の mixer を初期化する
 
@@ -61,8 +64,10 @@ class Player:
         pygame.mixer.init(frequency=self._rate, channels=1)
 
     def close(self) -> None:
-        """mixer を終了し、生成済みの音源を捨てる"""
+        """再生を止め、mixer を終了し、生成済みの音源を捨てる"""
         self._log.debug('')
+
+        self.stop()
 
         self._snd = {}
 
@@ -146,13 +151,14 @@ class Player:
         play thread
 
         キューから受け取ったnoteを発音する。None で終了。
+        stop() が呼ばれた場合も、残りを鳴らさずに終了する。
         """
         my_clock_base = -1.0
 
         while True:
             note_info = note_q.get()
 
-            if not note_info:
+            if not note_info or self._stop_event.is_set():
                 break
 
             if my_clock_base < 0:
@@ -165,14 +171,13 @@ class Player:
 
     def play(self, parsed_midi: ParsedData,
              pos_sec: float = 0.0,
-             sec_min: float = SEC_MIN, sec_max: float = SEC_MAX) -> None:
+             sec_min: float = SEC_MIN, sec_max: float = SEC_MAX,
+             block: bool = True) -> None:
         """
         play parsed midi data
 
-        メインスレッドが time.sleep() でスケジューリングし、
-        実際の発音はワーカースレッドが行う。
-        理想時刻と実時刻のずれ(clock_delay)を次のsleepから引くことで、
-        ずれの累積を防ぐ。
+        音源の生成 (`mk_wav()`) は `block` によらず、この呼び出しの中で
+        先に済ませる。音声デバイスが無ければ、ここでエラーになる。
 
         Parameters
         ----------
@@ -186,6 +191,14 @@ class Player:
             min sound length
         sec_max: float
             max sound length
+        block: bool
+            True なら鳴り終わるまで待つ。
+            False なら別スレッドで再生し、すぐに戻る
+
+        Raises
+        ------
+        RuntimeError
+            再生中に呼ばれた場合
         """
         self._log.debug('parsed_midi[channel_set]=%s,',
                         parsed_midi['channel_set'])
@@ -193,12 +206,64 @@ class Player:
                         len(parsed_midi['note_info']))
         self._log.debug('pos_sec=%s', pos_sec)
         self._log.debug('sec: %s .. %s', sec_min, sec_max)
+        self._log.debug('block=%s', block)
+
+        if self.is_playing():
+            raise RuntimeError('already playing: call stop() first')
 
         data = parsed_midi['note_info']
 
         snd = self.mk_wav(data, sec_min, sec_max)
         self._log.debug('len(snd)=%s', len(snd))
 
+        # 前回の stop() を持ち越さない
+        self._stop_event.clear()
+
+        if block:
+            self._play_main(data, pos_sec, sec_min, sec_max)
+            return
+
+        self._play_thread = threading.Thread(
+            target=self._play_main,
+            args=(data, pos_sec, sec_min, sec_max),
+            daemon=True)
+        self._play_thread.start()
+
+    def is_playing(self) -> bool:
+        """
+        Returns
+        -------
+        playing: bool
+            `play(block=False)` で始めた再生が続いているか
+        """
+        return self._play_thread is not None and self._play_thread.is_alive()
+
+    def stop(self) -> None:
+        """再生を止める
+
+        スケジューリングのループと発音のワーカーの両方に終了を伝え、
+        鳴っている音も止める。`play()` を呼び直せば再度再生できる。
+        """
+        self._log.debug('')
+
+        self._stop_event.set()
+
+        if self._play_thread is not None:
+            self._play_thread.join()
+            self._play_thread = None
+
+        if pygame.mixer.get_init():
+            pygame.mixer.stop()
+
+    def _play_main(self, data: list[NoteInfo], pos_sec: float,
+                   sec_min: float, sec_max: float) -> None:
+        """再生の本体
+
+        メインスレッドが time.sleep() でスケジューリングし、
+        実際の発音はワーカースレッドが行う。
+        理想時刻と実時刻のずれ(clock_delay)を次のsleepから引くことで、
+        ずれの累積を防ぐ。
+        """
         note_q: "queue.Queue[NoteInfo | None]" = queue.Queue()
 
         th = threading.Thread(
@@ -212,6 +277,10 @@ class Player:
         clock_delay = 0.0
 
         for i, note_info in enumerate(data):
+            if self._stop_event.is_set():
+                self._log.debug('stopped')
+                break
+
             if note_info.abs_time < pos_sec:
                 continue
 
@@ -227,7 +296,8 @@ class Player:
 
             if delay > 0:
                 delay -= clock_delay  # time adjustment
-                time.sleep(max(delay, 0.001))
+                # stop() にすぐ反応できるよう、sleep ではなく wait で待つ
+                self._stop_event.wait(max(delay, 0.001))
 
             # calc clock_delay
             if my_clock_base < 0:
@@ -249,6 +319,8 @@ class Player:
 
         note_q.put(None)
         th.join()
-        time.sleep(.5)
+
+        # 最後の音の余韻を待つ
+        self._stop_event.wait(.5)
 
         self._log.debug('end music')
