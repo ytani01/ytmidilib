@@ -4,7 +4,7 @@
 """
 `ytmidilib.midi_writer` のテスト
 
-要求書 2 通目 (`docs/20260806c-ytmidilib-requests-2.md`) の受け入れ条件を、
+要求書 2 通目 (`archives/20260806c-ytmidilib-requests-2.md`) の受け入れ条件を、
 そのまま自動テストにしたもの。
 """
 __author__ = 'Yoichi Tanibayashi'

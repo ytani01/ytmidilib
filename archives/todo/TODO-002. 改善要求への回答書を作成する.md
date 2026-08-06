@@ -2,7 +2,7 @@
 
 ## きっかけ
 
-出典: `docs/20260806a-ytmidilib-requests.md`（2026-08-06）
+出典: `archives/20260806a-ytmidilib-requests.md`（2026-08-06）
 
 [[TODO-001]] で対応した内容を、**要求元 (`ytstreetorgan`) へ返す回答書**として
 まとめる。要求元は要求書の項番 (#1〜#13) で管理しているので、
@@ -10,7 +10,7 @@
 
 ## やったこと
 
-作成物: `docs/20260806b-ytmidilib-responses.md`
+作成物: `archives/20260806b-ytmidilib-responses.md`
 
 - `docs/` に回答書を新規作成する（日付＋用途が分かるファイル名）
 - 要求書の一覧表と同じ #1〜#13 の並びで、各項目について書く

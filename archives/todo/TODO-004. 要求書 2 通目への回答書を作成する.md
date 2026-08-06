@@ -2,10 +2,10 @@
 
 ## きっかけ
 
-出典: `docs/20260806c-ytmidilib-requests-2.md`（2026-08-06）
+出典: `archives/20260806c-ytmidilib-requests-2.md`（2026-08-06）
 
 [[TODO-003]] の対応内容を、要求元 (`ytstreetorgan`) への回答書としてまとめる。
-[[TODO-002]]（`docs/20260806b-ytmidilib-responses.md`）と同じ体裁で、
+[[TODO-002]]（`archives/20260806b-ytmidilib-responses.md`）と同じ体裁で、
 要求書の項番 #1〜#4 ごとに答える。
 
 **[[TODO-006]]（テストの整備）の後に書く。** 回答書に書く「確認した」の
@@ -14,7 +14,7 @@
 
 ## やったこと
 
-作成物: `docs/20260806d-ytmidilib-responses-2.md`
+作成物: `archives/20260806d-ytmidilib-responses-2.md`
 
 - `docs/` に回答書を新規作成する（日付＋用途が分かるファイル名）
 - 要求と違う判断をした箇所は理由を明記する

@@ -2,7 +2,7 @@
 
 ## きっかけ
 
-出典: `docs/20260806a-ytmidilib-requests.md`（2026-08-06）
+出典: `archives/20260806a-ytmidilib-requests.md`（2026-08-06）
 
 要求は 0.0.3 時点のコードに対するもので、その後の
 `0e1a2ea refactor: 型ヒントを追加し、lint の指摘を解消する` で

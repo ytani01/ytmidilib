@@ -2,7 +2,7 @@
 
 ## きっかけ
 
-出典: `docs/20260806c-ytmidilib-requests-2.md`（2026-08-06、対象 0.1.0）
+出典: `archives/20260806c-ytmidilib-requests-2.md`（2026-08-06、対象 0.1.0）
 
 要求は 4 件。**#1（`transpose_file()` の新設）が本体**で、#2（`clip`）と
 #3（`drums`）はその引数の設計、#4 は `write()` の docstring。

@@ -49,7 +49,7 @@ ytmidilib のログを制御することもできない（loguru のシンクで
 取り込まれた場合には成り立たない**（loguru の既定シンクは stderr /
 DEBUG）。承知の上で `logger.disable()` はしていない。
 
-回答書 `docs/20260806b-ytmidilib-responses.md` の
+回答書 `archives/20260806b-ytmidilib-responses.md` の
 「`my_logger.init_handler()` はアプリ専用」という記述は古くなるが、
 回答書は日付入りの記録なので直していない。`ytstreetorgan` へは別途伝える。
 
