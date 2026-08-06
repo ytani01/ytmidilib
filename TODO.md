@@ -1,22 +1,7 @@
 # TODO
 
-**残っている項目: TODO-009。** これまでに 8 件を決着させた。
+**残っている項目は無い。** これまでに 9 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る。**番号は `TODO-010` から。**
-
----
-
-## TODO-009. 未使用の依存 `sounddevice` を外す
-
-- [ ] `pyproject.toml` の依存から外す
-- [ ] `uv.lock` を更新する
-- [ ] `CLAUDE.md` / `docs/REFERENCE.md` の記述を消す
-
-`sounddevice` は依存に入っているが、コードからは使われていない
-（再生は pygame 経由）。`grep` した範囲では `pyproject.toml` と
-ドキュメントの「未使用」という注記しか無く、他のパッケージからの
-逆依存も無い。
-
-外すと `cffi` / `pycparser` も一緒に消える。
 
 ---
 
@@ -25,6 +10,7 @@
 1 項目 1 ファイル。`archives/todo/` にある（新しい順）。
 **やらないと決めたものの理由もそこにある。** 蒸し返す前に読むこと。
 
+- [**TODO-009.** 未使用の依存 `sounddevice` を外す](archives/todo/TODO-009.%20未使用の依存%20sounddevice%20を外す.md)
 - [**TODO-008.** リファレンスマニュアルを作る](archives/todo/TODO-008.%20リファレンスマニュアルを作る.md)
 - [**TODO-007.** `my_logger.py` を廃止して `mylog.py` へ切り替える](archives/todo/TODO-007.%20my_logger.py%20を廃止して%20mylog.py%20へ切り替える.md)
 - [**TODO-006.** テストを整備する（pytest）](archives/todo/TODO-006.%20テストを整備する（pytest）.md)

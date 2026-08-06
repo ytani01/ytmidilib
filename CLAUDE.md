@@ -165,7 +165,7 @@ pygame の mixer はモノラル (`channels=1`) で初期化する。`Player` �
 
 ## 注意点
 
-- `pyproject.toml` の依存に `sounddevice` があるが、現状コードからは
-  未使用（再生は pygame 経由）。
+- 音の再生は pygame 経由のみ。未使用だった `sounddevice` は依存から
+  外した（TODO-009）。
 - カバレッジは `Player` の再生経路を除外しているぶん低く出る（全体で
   8割程度）。**数値を上げるために再生をテストしない**（上の方針を参照）。
