@@ -1,7 +1,43 @@
 # TODO
 
-**残っている項目は無い。** これまでに 7 件を決着させた。
-新しく足すときは「完了済み」の上に節を作る。**番号は `TODO-008` から。**
+**残っている項目: TODO-008。** これまでに 7 件を決着させた。
+新しく足すときは「完了済み」の上に節を作る。**番号は `TODO-009` から。**
+
+---
+
+## TODO-008. `docs/REFERENCE.md`（リファレンスマニュアル）を作る
+
+- [ ] `docs/REFERENCE.md` を書く
+- [ ] `README.md` から参照を張る
+
+`ytmidilib` は `ytstreetorgan` 専用ではなく、他のアプリからも使われうる。
+今は `README.md` が「詳しくは `pydoc` を見よ」と案内するだけで、公開 API
+（`__init__.py` の `__all__`）を一覧できる場所が無い。利用側が
+`pydoc` を叩かずに読める形にまとめる。
+
+対象は公開 API と CLI に限る。内部実装（`parse1()` / `set_end_time()` /
+`_play_main()` など）は仕組みの説明が要る範囲だけ触れ、詳細は
+`CLAUDE.md` に任せる。
+
+構成案:
+
+1. はじめに（何をするライブラリか、対象読者、インストール）
+2. クイックスタート（パース → 再生の最小コード）
+3. データ構造（`ParsedMidi` / `NoteInfo` / `VisualData`）
+4. API リファレンス（`__all__` の順に、シグネチャ・引数・戻り値・例外・例）
+   - `Parser`、`Player`、`Wav`
+   - `write()` / `transpose()` / `transpose_file()`
+   - `note2freq()` と定数（`FREQ_BASE` / `NOTE_BASE` / `NOTE_N`
+     / `DEF_TICKS_PER_BEAT` / `DRUM_CHANNEL`）
+5. ログ（`mylog.loggerInit()`、`debug=` 引数が水準に影響しないこと）
+6. CLI リファレンス（`parse` / `play` / `wav` / `transpose`）
+7. 注意点・制限（`parse()` → `write()` は往復にならない、
+   音声デバイスが要る経路、mixer はモノラルで共有）
+
+決めること:
+
+- 分量。全 API を網羅するか、よく使うものを厚く書くか
+- 日本語のみで書く（既存ドキュメントに合わせる）想定でよいか
 
 ---
 
