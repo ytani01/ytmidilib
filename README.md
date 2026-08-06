@@ -57,6 +57,9 @@ ytmidilib play midi_file
 
 ## 3. for detail
 
+**詳しくは [リファレンスマニュアル](docs/REFERENCE.md) を参照。**
+公開API、データ構造、コマンドライン、制限事項をまとめてある。
+
 ### 3.1 API
 
 パージングする関数
