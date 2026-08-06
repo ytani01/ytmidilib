@@ -1,33 +1,7 @@
 # TODO
 
-**残っている項目: TODO-011。** これまでに 10 件を決着させた。
+**残っている項目は無い。** これまでに 11 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る。**番号は `TODO-012` から。**
-
----
-
-## TODO-011. README.md とリファレンスマニュアルの重複を解消する
-
-- [ ] README.md から、`docs/REFERENCE.md` と重複する記述を削除する
-
-`docs/REFERENCE.md` を作った（TODO-008）あと、README.md をそのままに
-してあるので、同じことが 2 か所に書かれている。
-
-| README の箇所 | REFERENCE の対応箇所 |
-|---|---|
-| TL;DR のサンプル | 2.1 パージングして再生する |
-| 1. Install | 1. インストール |
-| 2. デモ実行 | 9. コマンドライン |
-| 3.1 API（pydoc のコマンド列） | 4 / 5 / 7 章 |
-| 3.2 parsed data | 3.1 `ParsedMidi` |
-| A. Reference（mido へのリンク） | 付録. 関連ドキュメント |
-
-README.md は「何ができるか」と「どこを読めばよいか」だけにし、
-API・データ構造・コマンドラインの詳細は REFERENCE.md に任せる。
-最短で試せる導線（インストール 1 つとコマンド 1 つ）は、
-リンクだけでは足りないので README にも残す。
-
-なお README の `uv run python -m pytoc ytmidilib.note2freq` は
-`pydoc` の誤記。削除する範囲に入る。
 
 ---
 
@@ -36,6 +10,7 @@ API・データ構造・コマンドラインの詳細は REFERENCE.md に任せ
 1 項目 1 ファイル。`archives/todo/` にある（新しい順）。
 **やらないと決めたものの理由もそこにある。** 蒸し返す前に読むこと。
 
+- [**TODO-011.** README.md とリファレンスマニュアルの重複を解消する](archives/todo/TODO-011.%20README.md%20とリファレンスマニュアルの重複を解消する.md)
 - [**TODO-010.** 要求書・回答書の移動にリンクを追従させる](archives/todo/TODO-010.%20要求書・回答書の移動にリンクを追従させる.md)
 - [**TODO-009.** 未使用の依存 `sounddevice` を外す](archives/todo/TODO-009.%20未使用の依存%20sounddevice%20を外す.md)
 - [**TODO-008.** リファレンスマニュアルを作る](archives/todo/TODO-008.%20リファレンスマニュアルを作る.md)
