@@ -14,17 +14,15 @@ import os
 from typing import Any, BinaryIO
 
 import mido
+from loguru import logger
 
 from .midi_parser import DEFAULT_TEMPO, NoteInfo
 from .midi_utils import NOTE_N
-from .my_logger import get_logger
 
 DEF_TICKS_PER_BEAT = 480
 
 DRUM_CHANNEL = 9
 """打楽器チャンネル(0始まり)。note が音の高さではなく楽器の種類を表す"""
-
-LOG = get_logger(__name__)
 
 
 def _shift_note(note: int, channel: int, n: int,
@@ -103,7 +101,7 @@ def transpose(note_info: list[NoteInfo], n: int,
         `clip` が False で、移調の結果 MIDIノート番号が 0 .. 127 の
         範囲外になる音がある場合。1音でも範囲外なら、移調全体を失敗させる
     """
-    LOG.debug('n=%s, clip=%s, drums=%s', n, clip, drums)
+    logger.debug('n={}, clip={}, drums={}', n, clip, drums)
 
     out_data: list[NoteInfo] = []
     clip_count = 0
@@ -120,8 +118,8 @@ def transpose(note_info: list[NoteInfo], n: int,
                                  ni.velocity, ni.end_time))
 
     if clip_count:
-        LOG.warning('clipped %s note(s) into 0 .. %s',
-                    clip_count, NOTE_N - 1)
+        logger.warning('clipped {} note(s) into 0 .. {}',
+                       clip_count, NOTE_N - 1)
 
     return out_data
 
@@ -163,7 +161,7 @@ def transpose_file(src: str | os.PathLike[str] | BinaryIO,
         範囲外になる音がある場合。1音でも範囲外なら、移調全体を失敗させる
         (`dst` には何も書かない)
     """
-    LOG.debug('n=%s, clip=%s, drums=%s', n, clip, drums)
+    logger.debug('n={}, clip={}, drums={}', n, clip, drums)
 
     if isinstance(src, (str, os.PathLike)):
         midi_obj = mido.MidiFile(filename=os.fspath(src))
@@ -186,8 +184,8 @@ def transpose_file(src: str | os.PathLike[str] | BinaryIO,
             msg.note = new_note
 
     if clip_count:
-        LOG.warning('clipped %s note(s) into 0 .. %s',
-                    clip_count, NOTE_N - 1)
+        logger.warning('clipped {} note(s) into 0 .. {}',
+                       clip_count, NOTE_N - 1)
 
     if isinstance(dst, (str, os.PathLike)):
         midi_obj.save(filename=os.fspath(dst))
@@ -227,8 +225,9 @@ def write(midi_file: str | os.PathLike[str], note_info: list[NoteInfo],
     tempo: int
         テンポ [usec/beat]。この値の set_tempo をファイル先頭に書く
     """
-    LOG.debug('midi_file=%s, len(note_info)=%s', midi_file, len(note_info))
-    LOG.debug('ticks_per_beat=%s, tempo=%s', ticks_per_beat, tempo)
+    logger.debug('midi_file={}, len(note_info)={}',
+                 midi_file, len(note_info))
+    logger.debug('ticks_per_beat={}, tempo={}', ticks_per_beat, tempo)
 
     # (tick, velocity==0 が先, note) で並べる。
     # 同時刻では、消音を先に置いて、同じ note の再打鍵と衝突させない

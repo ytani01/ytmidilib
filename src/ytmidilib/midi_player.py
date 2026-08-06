@@ -12,10 +12,10 @@ import threading
 import time
 
 import pygame
+from loguru import logger
 
 from .midi_parser import NoteInfo, ParsedMidi
 from .midi_utils import note2freq
-from .my_logger import get_logger
 from .wav_utils import Wav
 
 
@@ -37,10 +37,12 @@ class Player:
         ----------
         rate: int
             サンプリングレート [Hz]
+        debug: bool
+            互換のために残してある引数。ログの水準を決めるのは
+            `mylog.loggerInit()` だけで、この引数は水準に影響しない
         """
         self._dbg = debug
-        self._log = get_logger(self.__class__.__name__, self._dbg)
-        self._log.debug('rate=%s', rate)
+        logger.debug('rate={}', rate)
 
         self._rate = rate
 
@@ -57,15 +59,15 @@ class Player:
         音声デバイスが無い環境では、ここで `pygame.error` になる。
         """
         if pygame.mixer.get_init():
-            self._log.debug('already initialized: %s', pygame.mixer.get_init())
+            logger.debug('already initialized: {}', pygame.mixer.get_init())
             return
 
-        self._log.debug('rate=%s', self._rate)
+        logger.debug('rate={}', self._rate)
         pygame.mixer.init(frequency=self._rate, channels=1)
 
     def close(self) -> None:
         """再生を止め、mixer を終了し、生成済みの音源を捨てる"""
-        self._log.debug('')
+        logger.debug('')
 
         self.stop()
 
@@ -167,7 +169,7 @@ class Player:
             now = time.time() - my_clock_base
 
             self.play_sound(note_info, sec_min, sec_max)
-            self._log.debug('%08.3f / %s', now, note_info)
+            logger.debug('{:08.3f} / {}', now, note_info)
 
     def play(self, parsed_midi: ParsedMidi,
              pos_sec: float = 0.0,
@@ -200,13 +202,13 @@ class Player:
         RuntimeError
             再生中に呼ばれた場合
         """
-        self._log.debug('parsed_midi[channel_set]=%s,',
-                        parsed_midi['channel_set'])
-        self._log.debug('length of parsed_midi[note_info]=%s',
-                        len(parsed_midi['note_info']))
-        self._log.debug('pos_sec=%s', pos_sec)
-        self._log.debug('sec: %s .. %s', sec_min, sec_max)
-        self._log.debug('block=%s', block)
+        logger.debug('parsed_midi[channel_set]={},',
+                     parsed_midi['channel_set'])
+        logger.debug('length of parsed_midi[note_info]={}',
+                     len(parsed_midi['note_info']))
+        logger.debug('pos_sec={}', pos_sec)
+        logger.debug('sec: {} .. {}', sec_min, sec_max)
+        logger.debug('block={}', block)
 
         if self.is_playing():
             raise RuntimeError('already playing: call stop() first')
@@ -214,7 +216,7 @@ class Player:
         data = parsed_midi['note_info']
 
         snd = self.mk_wav(data, sec_min, sec_max)
-        self._log.debug('len(snd)=%s', len(snd))
+        logger.debug('len(snd)={}', len(snd))
 
         # 前回の stop() を持ち越さない
         self._stop_event.clear()
@@ -244,7 +246,7 @@ class Player:
         スケジューリングのループと発音のワーカーの両方に終了を伝え、
         鳴っている音も止める。`play()` を呼び直せば再度再生できる。
         """
-        self._log.debug('')
+        logger.debug('')
 
         self._stop_event.set()
 
@@ -278,21 +280,21 @@ class Player:
 
         for i, note_info in enumerate(data):
             if self._stop_event.is_set():
-                self._log.debug('stopped')
+                logger.debug('stopped')
                 break
 
             if note_info.abs_time < pos_sec:
                 continue
 
-            self._log.debug('(%4d) %s', i, note_info)
+            logger.debug('({:4d}) {}', i, note_info)
 
             delay = note_info.abs_time - abs_time
-            self._log.debug('delay=%s', delay)
+            logger.debug('delay={}', delay)
 
             if i == 0 and delay > self.FIRST_DELAY_MAX:
-                self._log.warning('delay:%s too long ..', delay)
+                logger.warning('delay:{} too long ..', delay)
                 delay = self.FIRST_DELAY_MAX
-                self._log.warning('[fix] delay=%s', delay)
+                logger.warning('[fix] delay={}', delay)
 
             if delay > 0:
                 delay -= clock_delay  # time adjustment
@@ -306,11 +308,11 @@ class Player:
             now = time.time() - my_clock_base
 
             clock_delay = now - note_info.abs_time
-            self._log.debug('%8.3f / %8.3f clock_delay=%s',
-                            now, note_info.abs_time, clock_delay)
+            logger.debug('{:8.3f} / {:8.3f} clock_delay={}',
+                         now, note_info.abs_time, clock_delay)
 
             abs_time = note_info.abs_time
-            self._log.debug('abs_time=%s', abs_time)
+            logger.debug('abs_time={}', abs_time)
 
             if note_info.velocity == 0:
                 continue
@@ -323,4 +325,4 @@ class Player:
         # 最後の音の余韻を待つ
         self._stop_event.wait(.5)
 
-        self._log.debug('end music')
+        logger.debug('end music')

@@ -13,8 +13,7 @@ import os
 from typing import Any, TypedDict
 
 import mido
-
-from .my_logger import get_logger
+from loguru import logger
 
 DEFAULT_TEMPO = 500000
 """MIDI 仕様の既定テンポ [usec/beat]。120 BPM 相当 (mido.bpm2tempo(120))。"""
@@ -100,9 +99,15 @@ class Parser:
     V_CHR_STOP = 'abcdefghijklmnopqrstuvwxyz'
 
     def __init__(self, debug: bool = False) -> None:
-        """ Constructor """
+        """constructor
+
+        Parameters
+        ----------
+        debug: bool
+            互換のために残してある引数。ログの水準を決めるのは
+            `mylog.loggerInit()` だけで、この引数は水準に影響しない
+        """
         self._dbg = debug
-        self._log = get_logger(self.__class__.__name__, self._dbg)
 
         self._channel_set: set[int] = set()
 
@@ -147,7 +152,7 @@ class Parser:
                 continue
 
             if msg.type == 'end_of_track':
-                self._log.debug(msg.__dict__)
+                logger.debug('{}', msg.__dict__)
                 break
 
             if msg.type not in ('note_on', 'note_off'):
@@ -170,7 +175,7 @@ class Parser:
         対応する note_off の時刻を開始側エントリの end_time に書き戻す。
         閉じられなかった note は、最終イベントの時刻で打ち切る。
         """
-        self._log.debug('')
+        logger.debug('')
 
         out_data = copy.deepcopy(in_data)
         note_start: dict[tuple[int, int], list[int]] = {}
@@ -192,9 +197,9 @@ class Parser:
             except (KeyError, IndexError) as ex:
                 # 対応する note_on が無い note_off。壊れたファイルでは
                 # 起きうるので、どの音かが分かる形で警告して読み飛ばす。
-                self._log.warning(
-                    '%s: no note_on for'
-                    ' channel:%02d note:%03d at %08.3f .. ignored',
+                logger.warning(
+                    '{}: no note_on for'
+                    ' channel:{:02d} note:{:03d} at {:08.3f} .. ignored',
                     type(ex).__name__, ent.channel, ent.note, ent.abs_time)
                 continue
 
@@ -230,13 +235,13 @@ class Parser:
             'note_info': list of NoteInfo
         }
         """
-        self._log.debug('midi_file=%s, channel=%s', midi_file, channel)
+        logger.debug('midi_file={}, channel={}', midi_file, channel)
 
         midi_obj = mido.MidiFile(midi_file)
 
         self._channel_set, data1 = self.parse1(midi_obj, channel)
 
-        self._log.debug('channel_set=%s', self._channel_set)
+        logger.debug('channel_set={}', self._channel_set)
 
         data2 = self.set_end_time(data1)
 
@@ -337,7 +342,7 @@ class Parser:
                 v_data[-1]['chr'][note] = ch1
                 prev_chr_list[note] = ch2
 
-        self._log.debug('note_min/max=%s', (note_min, note_max))
+        logger.debug('note_min/max={}', (note_min, note_max))
 
         for v_ent in v_data:
             v_ent['chr'] = ''.join(v_ent['chr'][note_min:note_max+1])
@@ -379,8 +384,8 @@ class Parser:
         note_min = v_data['note_min']
         note_max = v_data['note_max']
 
-        self._log.debug('note_min/max=%s', (note_min, note_max))
-        self._log.debug('channel_set=%s', channel_set)
+        logger.debug('note_min/max={}', (note_min, note_max))
+        logger.debug('channel_set={}', channel_set)
 
         border = '--------+' + '-' * (note_max - note_min + 1) + '+'
         ruler = self._format_note_ruler(note_min, note_max)

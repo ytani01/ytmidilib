@@ -11,17 +11,16 @@ __author__ = 'Yoichi Tanibayashi'
 __date__ = '2026/08'
 
 from collections import Counter
-from collections.abc import Callable
-from logging import getLogger
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
 import mido
 import pytest
+from loguru import logger
 
 from ytmidilib import DEF_TICKS_PER_BEAT, DRUM_CHANNEL
 from ytmidilib.midi_parser import DEFAULT_TEMPO
-from ytmidilib.my_logger import CONSOLE_HANDLER, ROOT_LOGGER_NAME
 
 MkMidiFile = Callable[..., Path]
 """`mk_midi_file` fixture の型"""
@@ -29,21 +28,41 @@ MkMidiFile = Callable[..., Path]
 CountMsgTypes = Callable[[mido.MidiFile], dict[str, int]]
 """`count_msg_types` fixture の型"""
 
+LogMessages = list[tuple[str, str]]
+"""`log_messages` fixture の型。(水準の名前, メッセージ) の列"""
+
 
 @pytest.fixture(autouse=True)
-def _reset_logger() -> None:
-    """パッケージのロガーを、取り込んだ直後の状態に戻す
+def _reset_logger() -> Iterator[None]:
+    """loguru のシンクを、テストごとに空にする
 
-    `my_logger.init_handler()` は propagate を False にする。CLI の
-    テストがこれを通ると設定が残り、**あとのテストで `caplog` が何も
-    拾えなくなる**(実行順に依存して落ちる)。毎回ここで戻す。
+    CLI のテストは `mylog.loggerInit()` を通るのでシンクが増える。
+    残したままだと、あとのテストのログまで出力されてしまう。
     """
-    logger = getLogger(ROOT_LOGGER_NAME)
+    logger.remove()
 
-    logger.propagate = True
+    yield
 
-    if CONSOLE_HANDLER in logger.handlers:
-        logger.removeHandler(CONSOLE_HANDLER)
+    logger.remove()
+
+
+@pytest.fixture
+def log_messages() -> Iterator[LogMessages]:
+    """出力されたログを (水準の名前, メッセージ) で集める
+
+    loguru のログは pytest の `caplog` には入らないので、
+    シンクを張って自分で集める。
+    """
+    msgs: LogMessages = []
+
+    handler_id = logger.add(
+        lambda m: msgs.append(
+            (m.record['level'].name, m.record['message'])),
+        level='DEBUG')
+
+    yield msgs
+
+    logger.remove(handler_id)
 
 
 @pytest.fixture

@@ -6,9 +6,10 @@ main for midi_tools
 """
 import click
 import pygame
+from loguru import logger
 
 from . import DRUM_CHANNEL, Parser, Player, Wav, note2freq, transpose_file
-from .my_logger import get_logger, init_handler
+from .mylog import loggerInit
 
 
 class MidiApp:
@@ -24,13 +25,11 @@ class MidiApp:
                  debug: bool = False) -> None:
         """ Constructor """
         self._dbg = debug
-        self._log = get_logger(self.__class__.__name__, self._dbg)
-        self._log.debug('midi_file=%s, channel=%s', midi_file, channel)
-        self._log.debug('parse_only=%s, visual_flag=%s',
-                        parse_only, visual_flag)
-        self._log.debug('rate=%s', rate)
-        self._log.debug('sec_min/max=%s/%s', sec_min, sec_max)
-        self._log.debug('pos_sec=%s', pos_sec)
+        logger.debug('midi_file={}, channel={}', midi_file, channel)
+        logger.debug('parse_only={}, visual_flag={}', parse_only, visual_flag)
+        logger.debug('rate={}', rate)
+        logger.debug('sec_min/max={}/{}', sec_min, sec_max)
+        logger.debug('pos_sec={}', pos_sec)
 
         self._midi_file = midi_file
         self._channel = channel
@@ -46,7 +45,7 @@ class MidiApp:
 
     def main(self) -> None:
         """ main """
-        self._log.debug('')
+        logger.debug('')
 
         parsed_data = self._parser.parse(self._midi_file, self._channel)
 
@@ -69,7 +68,7 @@ class MidiApp:
 
     def end(self) -> None:
         """ end """
-        self._log.debug('')
+        logger.debug('')
 
         self._player.close()
 
@@ -92,11 +91,10 @@ class WavApp:
             出力ファイル名(空なら保存しない)
         """
         self._dbg = debug
-        self._log = get_logger(self.__class__.__name__, self._dbg)
-        self._log.debug('freq,vol,sec,rate=%s', (freq, vol, sec, rate))
-        self._log.debug('outfile=%s', outfile)
-        self._log.debug('midi_note_flag=%s', midi_note_flag)
-        self._log.debug('play_flag=%s', play_flag)
+        logger.debug('freq,vol,sec,rate={}', (freq, vol, sec, rate))
+        logger.debug('outfile={}', outfile)
+        logger.debug('midi_note_flag={}', midi_note_flag)
+        logger.debug('play_flag={}', play_flag)
 
         self._freq = freq
         self._outfile = outfile
@@ -113,7 +111,7 @@ class WavApp:
     def main(self) -> None:
         """main
         """
-        self._log.debug('')
+        logger.debug('')
 
         wav = Wav(self._freq, self._sec, self._rate, debug=self._dbg)
 
@@ -127,18 +125,18 @@ class WavApp:
         if self._outfile:  # not empty (C10801)
             wav.save(self._outfile[0])
 
-        self._log.debug('done')
+        logger.debug('done')
 
     def end(self) -> None:
         """
         Call at the end of program.
         """
-        self._log.debug('doing ..')
+        logger.debug('doing ..')
 
         if pygame.mixer.get_init():
             pygame.mixer.quit()
 
-        self._log.debug('done')
+        logger.debug('done')
 
 
 class TransposeApp:
@@ -148,9 +146,8 @@ class TransposeApp:
                  debug: bool = False) -> None:
         """ Constructor """
         self._dbg = debug
-        self._log = get_logger(self.__class__.__name__, self._dbg)
-        self._log.debug('src=%s, dst=%s, n=%s', src, dst, n)
-        self._log.debug('clip=%s, drums=%s', clip, drums)
+        logger.debug('src={}, dst={}, n={}', src, dst, n)
+        logger.debug('clip={}, drums={}', clip, drums)
 
         self._src = src
         self._dst = dst
@@ -160,7 +157,7 @@ class TransposeApp:
 
     def main(self) -> None:
         """ main """
-        self._log.debug('')
+        logger.debug('')
 
         try:
             transpose_file(self._src, self._dst, self._n,
@@ -173,7 +170,7 @@ class TransposeApp:
 
     def end(self) -> None:
         """ end """
-        self._log.debug('')
+        logger.debug('')
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -191,8 +188,9 @@ midilib Apps
 @click.pass_context
 def cli(ctx) -> None:
     """ click group """
-    # ハンドラの設定は、アプリケーション側であるここで行う
-    init_handler()
+    # 出力先の設定は、アプリケーション側であるここで行う。
+    # `--debug` は各サブコマンドが持つので、そこで呼び直す
+    loggerInit()
 
     if ctx.invoked_subcommand is None:
         print(ctx.get_help())
@@ -213,7 +211,7 @@ def parse(midi_file, channel, visual_flag, dbg) -> None:
     """
     parser main
     """
-    log = get_logger(__name__, dbg)
+    loggerInit(dbg)
 
     app = MidiApp(midi_file, channel, parse_only=True,
                   visual_flag=visual_flag,
@@ -221,7 +219,7 @@ def parse(midi_file, channel, visual_flag, dbg) -> None:
     try:
         app.main()
     finally:
-        log.debug('finally')
+        logger.debug('finally')
         app.end()
 
 
@@ -248,7 +246,7 @@ def play(midi_file, pos_sec, channel, rate, sec_min, sec_max, dbg) -> None:
     """
     player main
     """
-    log = get_logger(__name__, dbg)
+    loggerInit(dbg)
 
     app = MidiApp(midi_file, channel, parse_only=False,
                   visual_flag=False, rate=rate,
@@ -257,7 +255,7 @@ def play(midi_file, pos_sec, channel, rate, sec_min, sec_max, dbg) -> None:
     try:
         app.main()
     finally:
-        log.debug('finally')
+        logger.debug('finally')
         app.end()
 
 
@@ -284,11 +282,11 @@ def wav(freq, outfile, midi_note_flag, vol, sec, rate,
         dont_play, debug) -> None:
     """サンプル起動用メイン関数
     """
-    log = get_logger(__name__, debug)
-    log.debug('freq,vol,sec,rate=%s', (freq, vol, sec, rate))
-    log.debug('outfile=%s', outfile)
-    log.debug('midi_note_flag=%s', midi_note_flag)
-    log.debug('dont_play=%s', dont_play)
+    loggerInit(debug)
+    logger.debug('freq,vol,sec,rate={}', (freq, vol, sec, rate))
+    logger.debug('outfile={}', outfile)
+    logger.debug('midi_note_flag={}', midi_note_flag)
+    logger.debug('dont_play={}', dont_play)
 
     app = WavApp(freq, outfile, midi_note_flag, vol, sec, rate,
                  play_flag=not dont_play,
@@ -296,7 +294,7 @@ def wav(freq, outfile, midi_note_flag, vol, sec, rate,
     try:
         app.main()
     finally:
-        log.debug('finally')
+        logger.debug('finally')
         app.end()
 
 
@@ -318,13 +316,13 @@ def transpose(src, dst, n, clip, drums, dbg) -> None:
     """
     transpose main
     """
-    log = get_logger(__name__, dbg)
+    loggerInit(dbg)
 
     app = TransposeApp(src, dst, n, clip=clip, drums=drums, debug=dbg)
     try:
         app.main()
     finally:
-        log.debug('finally')
+        logger.debug('finally')
         app.end()
 
 

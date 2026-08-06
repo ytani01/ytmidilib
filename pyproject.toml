@@ -13,7 +13,8 @@ dependencies = [
   "mido",
   "pygame-ce",
   "numpy",
-  "sounddevice"
+  "sounddevice",
+  "loguru>=0.7.3",
 ]
 
 [project.scripts]

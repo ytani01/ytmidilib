@@ -7,7 +7,6 @@
 __author__ = 'Yoichi Tanibayashi'
 __date__ = '2026/08'
 
-import logging
 from pathlib import Path
 
 import mido
@@ -16,7 +15,7 @@ import pytest
 from ytmidilib import DRUM_CHANNEL, NoteInfo, Parser
 from ytmidilib.midi_parser import DEFAULT_TEMPO
 
-from conftest import MkMidiFile
+from conftest import LogMessages, MkMidiFile
 
 TPB = 480
 """テストで使う分解能 [tick/beat]"""
@@ -184,8 +183,7 @@ def test_set_end_time_fifo() -> None:
     assert out_data[1].end_time == 0.75
 
 
-def test_set_end_time_orphan_note_off(
-        caplog: pytest.LogCaptureFixture) -> None:
+def test_set_end_time_orphan_note_off(log_messages: LogMessages) -> None:
     """対応する `note_on` が無い消音は、警告して読み飛ばす"""
     in_data = [
         NoteInfo(0.5, 3, 60, 0),
@@ -193,14 +191,13 @@ def test_set_end_time_orphan_note_off(
         NoteInfo(2.0, 0, 64, 0),
     ]
 
-    with caplog.at_level(logging.WARNING):
-        out_data = Parser().set_end_time(in_data)
+    out_data = Parser().set_end_time(in_data)
 
-    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    warnings = [msg for level, msg in log_messages if level == 'WARNING']
     assert len(warnings) == 1
-    assert 'no note_on' in warnings[0].getMessage()
-    assert 'channel:03' in warnings[0].getMessage()
-    assert 'note:060' in warnings[0].getMessage()
+    assert 'no note_on' in warnings[0]
+    assert 'channel:03' in warnings[0]
+    assert 'note:060' in warnings[0]
 
     # 読み飛ばしても、他の音は正しく閉じられる
     assert out_data[1].end_time == 2.0

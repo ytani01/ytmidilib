@@ -53,11 +53,14 @@ CI 設定は無いので、上記はローカルで手動実行する。
   `snd_key()` など計算だけ、`Wav` は生成と `save()` まで
 - 再生ループ（`Player._play_main()`）も、実時間の待ちに依存するので対象外
 - CLI は `click.testing.CliRunner`（サブプロセスを起動しない）
-- **`my_logger.init_handler()` はロガーの `propagate` を False にする。**
-  CLI のテストがこれを通ると、以降のテストで `caplog` が何も拾えなく
-  なるため、`conftest.py` の autouse fixture が毎回戻している
+- **loguru のログは pytest の `caplog` に入らない。** ログを確かめる
+  テストは `conftest.py` の `log_messages` fixture を使う
+  （シンクを張り、`(水準の名前, メッセージ)` のリストに集める）
+- **CLI のテストは `mylog.loggerInit()` を通るのでシンクが増える。**
+  残ると以降のテストの出力に混ざるため、`conftest.py` の autouse
+  fixture が毎回 `logger.remove()` している
 
-すべてのサブコマンドに `-d` / `--debug` があり、`my_logger` のレベルを
+すべてのサブコマンドに `-d` / `--debug` があり、loguru のレベルを
 DEBUG に切り替える。挙動の調査は基本これで足りる。
 
 ## アーキテクチャ
@@ -94,23 +97,31 @@ parsed_data = {
   クリックノイズを消しているのが要点（この処理を外すとブツブツ鳴る）。
   再生は pygame の `sndarray`。
 - `midi_utils.py` — `note2freq()`（A4=440Hz, note 69 基準）と関連定数。
-- `my_logger.py` — 標準 logging の薄いラッパー。`get_logger()` は
-  `inspect.stack()` を呼ぶので**そこそこ重い**。ループ内やデータの
-  エンティティごとに呼ばないこと（詳細は「慣習」を参照）。
+- `mylog.py` — loguru の薄いラッパー。`loggerInit()` が出力先と水準を
+  決め、`exmsg()` が例外を1行の文字列にする。**`ytstreetorgan` /
+  `tmr` と同一のファイル**なので、直すときは他のプロジェクトも揃える
+  （TODO-007）。
 
 pygame の mixer はモノラル (`channels=1`) で初期化する。`Player` と
 `WavApp` がそれぞれ `pygame.mixer.init()` を呼ぶ。
 
-`__main__.py` は click の group。各サブコマンドは `MidiApp` / `WavApp` を
-生成して `main()` → `finally: end()` の形で呼ぶ。
+`__main__.py` は click の group。各サブコマンドは先頭で
+`loggerInit(debug)` を呼び（出力先を決めるのはアプリ側の仕事）、
+`MidiApp` / `WavApp` / `TransposeApp` を生成して
+`main()` → `finally: end()` の形で呼ぶ。
 
 ## 慣習
 
 - コードとコメントは既存スタイルに合わせる。docstring は numpy スタイル、
   コメント・ドキュメントは日本語。型ヒントは全モジュールに付いており、
   新規コードでも省略しない。
-- 各クラスは `self._dbg` と `self._log`（`get_logger(self.__class__.__name__,
-  self._dbg)`）を持ち、`debug=` をコンストラクタで受け渡すのが全体の慣習。
+- ログは `from loguru import logger` して `logger` を直接使う。書式は
+  `%s` ではなく `{}`（`logger.debug('rate={}', rate)`）。クラスごとの
+  ロガー（`self._log`）は持たない。
+- 各クラスは `debug=` をコンストラクタで受けて `self._dbg` に持つが、
+  **ログの水準を決めるのは `mylog.loggerInit()` だけ**で、この引数は
+  水準に影響しない（loguru は logger ごとの水準を持てない）。利用側の
+  互換のために残してある（TODO-007）。
 - バージョンは `hatch-vcs` により git タグから決まる。手書きの
   バージョン文字列は無い。
 - 公開 API は `__init__.py` の `__all__` が定義する。新しく公開する

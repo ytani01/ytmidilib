@@ -15,9 +15,8 @@ import wave
 
 import numpy as np
 import pygame
+from loguru import logger
 from numpy.typing import NDArray
-
-from .my_logger import get_logger
 
 
 class Wav:
@@ -52,10 +51,12 @@ class Wav:
             長さ [sec]
         rate: int
             サンプリングレート [Hz]
+        debug: bool
+            互換のために残してある引数。ログの水準を決めるのは
+            `mylog.loggerInit()` だけで、この引数は水準に影響しない
         """
         self._dbg = debug
-        self._log = get_logger(self.__class__.__name__, self._dbg)
-        self._log.debug('freq,sec,rate=%s', (freq, sec, rate))
+        logger.debug('freq,sec,rate={}', (freq, sec, rate))
 
         self._freq = freq
         self._sec = sec
@@ -70,7 +71,7 @@ class Wav:
         -------
         wav: NDArray[np.int16]
         """
-        self._log.debug('')
+        logger.debug('')
 
         # サンプリングする位置(秒)のarray
         sample_sec = np.arange(self._rate * self._sec) / self._rate
@@ -103,7 +104,7 @@ class Wav:
         outfile: str or os.PathLike
             出力ファイル名
         """
-        self._log.debug('outfile=%s', outfile)
+        logger.debug('outfile={}', outfile)
 
         # wave.open() の型定義は str しか受け付けないので、変換して渡す
         with wave.open(os.fspath(outfile), 'wb') as w_write:
@@ -119,11 +120,11 @@ class Wav:
         vol: float
             音量 (VOL_MIN .. VOL_MAX)
         """
-        self._log.debug('vol=%s', vol)
+        logger.debug('vol={}', vol)
 
         fixed_vol = min(max(vol, self.VOL_MIN), self.VOL_MAX)
         if fixed_vol != vol:
-            self._log.warning('fix: vol=%s -> %s', vol, fixed_vol)
+            logger.warning('fix: vol={} -> {}', vol, fixed_vol)
 
         snd = pygame.sndarray.make_sound(self.wav)
         snd.set_volume(fixed_vol)

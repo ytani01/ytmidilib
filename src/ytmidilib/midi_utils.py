@@ -8,13 +8,11 @@ MIDI utilities
 __author__ = 'Yoichi Tanibayashi'
 __date__ = '2020'
 
-from .my_logger import get_logger
+from loguru import logger
 
 FREQ_BASE = 440
 NOTE_BASE = 69
 NOTE_N = 128
-
-LOG = get_logger(__name__)
 
 
 def note2freq(note: int) -> float:
@@ -30,6 +28,6 @@ def note2freq(note: int) -> float:
     freq: float
         frequency [Hz]
     """
-    LOG.debug('note=%s', note)
+    logger.debug('note={}', note)
 
     return FREQ_BASE * 2.0 ** ((note - NOTE_BASE) / 12.0)

@@ -11,7 +11,6 @@ __author__ = 'Yoichi Tanibayashi'
 __date__ = '2026/08'
 
 import io
-import logging
 from pathlib import Path
 
 import mido
@@ -22,13 +21,12 @@ from ytmidilib import (
     transpose, transpose_file, write)
 from ytmidilib.midi_parser import DEFAULT_TEMPO
 
-from conftest import CountMsgTypes, MkMidiFile
+from conftest import CountMsgTypes, LogMessages, MkMidiFile
 
 
-def _warnings(caplog: pytest.LogCaptureFixture) -> list[str]:
+def _warnings(log_messages: LogMessages) -> list[str]:
     """WARNING のメッセージだけを取り出す"""
-    return [r.getMessage() for r in caplog.records
-            if r.levelno == logging.WARNING]
+    return [msg for level, msg in log_messages if level == 'WARNING']
 
 
 # --- transpose() ----------------------------------------------------
@@ -113,7 +111,7 @@ def test_transpose_out_of_range_low() -> None:
         transpose([NoteInfo(0.0, 0, 5, 100, 0.5)], -6)
 
 
-def test_transpose_clip(caplog: pytest.LogCaptureFixture) -> None:
+def test_transpose_clip(log_messages: LogMessages) -> None:
     """`clip=True` なら 0 .. 127 に丸め、WARNING を 1 行だけ出す"""
     in_data = [
         NoteInfo(0.0, 0, 120, 100, 0.5),
@@ -121,31 +119,28 @@ def test_transpose_clip(caplog: pytest.LogCaptureFixture) -> None:
         NoteInfo(1.0, 0, 5, 100, 1.5),
     ]
 
-    with caplog.at_level(logging.WARNING):
-        out_data = transpose(in_data, 12, clip=True)
+    out_data = transpose(in_data, 12, clip=True)
 
     assert [ni.note for ni in out_data] == [NOTE_N - 1, NOTE_N - 1, 17]
 
-    warnings = _warnings(caplog)
+    warnings = _warnings(log_messages)
     assert len(warnings) == 1
     assert 'clipped 2 note(s)' in warnings[0]
 
 
-def test_transpose_clip_low(caplog: pytest.LogCaptureFixture) -> None:
+def test_transpose_clip_low(log_messages: LogMessages) -> None:
     """下にはみ出す場合は 0 に丸める"""
-    with caplog.at_level(logging.WARNING):
-        out_data = transpose([NoteInfo(0.0, 0, 5, 100, 0.5)], -6, clip=True)
+    out_data = transpose([NoteInfo(0.0, 0, 5, 100, 0.5)], -6, clip=True)
 
     assert out_data[0].note == 0
-    assert len(_warnings(caplog)) == 1
+    assert len(_warnings(log_messages)) == 1
 
 
-def test_transpose_clip_no_warning(caplog: pytest.LogCaptureFixture) -> None:
+def test_transpose_clip_no_warning(log_messages: LogMessages) -> None:
     """1 つも丸めなければ WARNING は出さない"""
-    with caplog.at_level(logging.WARNING):
-        transpose([NoteInfo(0.0, 0, 60, 100, 0.5)], 2, clip=True)
+    transpose([NoteInfo(0.0, 0, 60, 100, 0.5)], 2, clip=True)
 
-    assert _warnings(caplog) == []
+    assert _warnings(log_messages) == []
 
 
 def test_transpose_drums_skip_range_check() -> None:
@@ -259,19 +254,18 @@ def test_transpose_file_out_of_range(rich_midi_file: Path,
 
 
 def test_transpose_file_clip(rich_midi_file: Path, tmp_path: Path,
-                             caplog: pytest.LogCaptureFixture) -> None:
+                             log_messages: LogMessages) -> None:
     """`clip=True` で 0 .. 127 に丸め、WARNING を 1 行だけ出す"""
     dst = tmp_path / 'out.mid'
 
-    with caplog.at_level(logging.WARNING):
-        transpose_file(rich_midi_file, dst, 100, clip=True)
+    transpose_file(rich_midi_file, dst, 100, clip=True)
 
     dst_obj = mido.MidiFile(dst)
     notes = [msg.note for track in dst_obj.tracks for msg in track
              if msg.type in ('note_on', 'note_off') and msg.channel == 0]
     assert notes == [NOTE_N - 1] * 4
 
-    warnings = _warnings(caplog)
+    warnings = _warnings(log_messages)
     assert len(warnings) == 1
     assert 'clipped 4 note(s)' in warnings[0]
 
