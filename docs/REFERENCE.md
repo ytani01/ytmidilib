@@ -106,7 +106,7 @@ transpose_file('song.mid', 'song_low.mid', -2)        # 2 半音下げる
 
 ### 3.1 `ParsedMidi`
 
-`Parser.parse()` の戻り値。**このモジュール間の唯一の契約**で、
+`Parser.parse()` の戻り値。**モジュール間で受け渡す唯一の形式**で、
 `Player.play()` はこの形の dict を受け取る。
 
 ```python
