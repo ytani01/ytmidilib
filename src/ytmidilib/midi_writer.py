@@ -193,7 +193,8 @@ def transpose_file(src: str | os.PathLike[str] | BinaryIO,
         midi_obj.save(file=dst)
 
 
-def write(midi_file: str | os.PathLike[str], note_info: list[NoteInfo],
+def write(midi_file: str | os.PathLike[str] | BinaryIO,
+          note_info: list[NoteInfo],
           ticks_per_beat: int = DEF_TICKS_PER_BEAT,
           tempo: int = DEFAULT_TEMPO) -> None:
     """`NoteInfo` のリストを MIDI ファイルへ書き出す
@@ -216,8 +217,9 @@ def write(midi_file: str | os.PathLike[str], note_info: list[NoteInfo],
 
     Parameters
     ----------
-    midi_file: str or os.PathLike
-        出力ファイル名
+    midi_file: str or os.PathLike or file-like
+        出力。パス、または書き込み可能なバイナリ file-like (`io.BytesIO` 等)。
+        file-like の場合、ディスクに何も残さずバイト列を得られる
     note_info: list of NoteInfo
         `end_time` が設定済みであること。`None` の音は長さ 0 として扱う
     ticks_per_beat: int
@@ -264,4 +266,7 @@ def write(midi_file: str | os.PathLike[str], note_info: list[NoteInfo],
 
     track.append(mido.MetaMessage('end_of_track', time=0))
 
-    midi_obj.save(midi_file)
+    if isinstance(midi_file, (str, os.PathLike)):
+        midi_obj.save(filename=os.fspath(midi_file))
+    else:
+        midi_obj.save(file=midi_file)

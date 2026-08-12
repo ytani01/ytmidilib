@@ -11,6 +11,7 @@
 |---|---|---|---|
 | 1 | [`20260806a`](20260806a-ytmidilib-requests.md) | [`20260806b`](20260806b-ytmidilib-responses.md) | `0.1.0` |
 | 2 | [`20260806c`](20260806c-ytmidilib-requests-2.md) | [`20260806d`](20260806d-ytmidilib-responses-2.md) | `0.1.1` |
+| 3 | この文書 | [`20260812b`](20260812b-ytmidilib-responses-3.md) | `0.3.0` |
 
 **今回は 1 件だけ。** 2 通目の #1 で `transpose_file()` に入れてもらった
 file-like 対応を、`write()` にも同じように入れてほしい、という話。

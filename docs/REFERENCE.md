@@ -527,6 +527,10 @@ write(midi_file, note_info: list[NoteInfo],
 `NoteInfo` のリストを MIDI ファイルへ書き出す。絶対秒を tick に戻し、
 `note_on` / `note_off` の並びに展開する。全チャンネルが 1 トラックに入る。
 
+`midi_file` は、パス（`str` / `os.PathLike`）でも、開いたバイナリファイル
+（`io.BytesIO` など）でもよい（`transpose_file()` の `dst` と同じ）。
+file-like を渡せば、ディスクに何も残さずバイト列が得られる。
+
 `velocity == 0` の要素は捨てる。`end_time` が `None` の音は長さ 0 として
 扱う。同時刻では消音を先に置き、同じ note の打ち直しと衝突させない。
 
@@ -535,6 +539,8 @@ write(midi_file, note_info: list[NoteInfo],
 読んだファイルを書き戻すためのものではない。
 
 ```python
+import io
+
 from ytmidilib import NoteInfo, write
 
 notes = [
@@ -543,6 +549,11 @@ notes = [
     NoteInfo(1.0, 0, 67, 100, 2.0),
 ]
 write('chord.mid', notes)
+
+# メモリ上で
+buf = io.BytesIO()
+write(buf, notes)
+data = buf.getvalue()
 ```
 
 ### 7.3 `note2freq()` と定数

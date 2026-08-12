@@ -398,6 +398,37 @@ def test_write_default_ticks_per_beat(tmp_path: Path) -> None:
     assert mido.MidiFile(midi_file).ticks_per_beat == DEF_TICKS_PER_BEAT
 
 
+def test_write_bytesio(tmp_path: Path) -> None:
+    """`midi_file` に file-like を渡せる。パスに書いたものと一致する"""
+    in_data = [
+        NoteInfo(0.0, 0, 60, 100, 0.5),
+        NoteInfo(0.5, 1, 64, 90, 1.5),
+    ]
+    midi_file = tmp_path / 'out.mid'
+    buf = io.BytesIO()
+
+    write(midi_file, in_data)
+    write(buf, in_data)
+
+    buf.seek(0)
+    buf_obj = mido.MidiFile(file=buf)
+    path_obj = mido.MidiFile(midi_file)
+
+    assert len(buf_obj.tracks) == len(path_obj.tracks)
+    assert buf_obj.ticks_per_beat == path_obj.ticks_per_beat
+    assert [list(track) for track in buf_obj.tracks] == [
+        list(track) for track in path_obj.tracks]
+
+
+def test_write_str_path(tmp_path: Path) -> None:
+    """ファイル名は `str` でも `os.PathLike` でも受ける"""
+    midi_file = tmp_path / 'out.mid'
+
+    write(str(midi_file), [NoteInfo(0.0, 0, 60, 100, 0.5)])
+
+    assert midi_file.exists()
+
+
 def test_write_transposed(tmp_path: Path, mk_midi_file: MkMidiFile) -> None:
     """`parse()` -> `transpose()` -> `write()` が通る(従来の経路)"""
     track = [
