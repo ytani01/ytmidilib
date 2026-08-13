@@ -1,7 +1,161 @@
 # TODO
 
-**残っている項目: 無し。** これまでに 19 件を決着させた。
-新しく足すときは「完了済み」の上に節を作る。**番号は `TODO-020` から。**
+**残っている項目: TODO-020 .. TODO-024。** これまでに 19 件を決着させた。
+新しく足すときは「完了済み」の上に節を作る。**番号は `TODO-025` から。**
+
+以下の 5 項目は、全体をあらためて読み直して洗い出したもの
+（020 だけはリファクタリングではなく、実測で確かめたバグ）。
+番号の順に優先度の意味は無く、着手する項目は利用者が指定する。
+
+ただし **021 と 023 は `midi_writer.py` が重なる**ので、続けて着手する
+なら 021 → 023 の順にすると二度手間にならない。
+
+---
+
+## TODO-020. `play -s` で、頭出し位置の秒数だけ無音で待つ
+
+- [ ] 頭出しの後、最初の音がすぐ鳴るようにする
+- [ ] 飛ばした後でも `FIRST_DELAY_MAX` の頭打ちが効くようにする
+- [ ] テストを足すか決めて、決めたとおりにする
+
+モデル / effort: Sonnet / medium
+
+`midi_player.py` の `_play_main()` は、`abs_time` の初期値が `0.0` の
+まま `pos_sec` 未満の note を `continue` で飛ばす。飛ばした分だけ
+`abs_time` が置き去りになるので、最初に鳴らす音の `delay` が
+「頭出しの位置そのもの」になる。
+
+```python
+abs_time = 0.0
+for i, note_info in enumerate(data):
+    if note_info.abs_time < pos_sec:
+        continue                          # abs_time は 0.0 のまま
+    delay = note_info.abs_time - abs_time  # = 頭出しの位置
+```
+
+長すぎる待ちを 3 秒で頭打ちにする処理も `i == 0` で判定しているため、
+飛ばした後（`i > 0`）には効かない。
+
+`play_sound()` を差し替えて `_play_main()` を直接呼び、実測した
+（音声デバイスは要らない）。note を 0.0 / 1.0 / 2.0 / 2.2 秒に置き、
+`pos_sec=2.0` で呼んだ結果:
+
+```
+delay=2.0
+elapsed = 2.70 sec   （鳴っている 0.2 秒 + 余韻 0.5 秒 = 約 0.7 秒のはず）
+```
+
+`docs/REFERENCE.md` の「30 秒目から鳴らす」も、実際には 30 秒の無音を
+挟んでから鳴り始める。
+
+（決めること）テストを足すか。テストの方針では「再生ループは実時間の
+待ちに依存するので対象外」としているが、待ち時間の計算だけを関数に
+分ければ、実時間を待たずに確かめられる。
+
+---
+
+## TODO-021. `midi_writer.py` の型を締める
+
+- [ ] `write()` の `dict[str, Any]` を無くす
+- [ ] 繰り返している「パスまたは file-like」の型に別名を付ける
+
+モデル / effort: Sonnet / medium
+
+`write()` は、並べ替えのために `(tick, 消音が先, note, メッセージの中身)`
+というタプルを作っていて、最後の要素が `dict[str, Any]` になっている。
+
+```python
+events: list[tuple[int, int, int, dict[str, Any]]] = []
+```
+
+TODO-016 で `dict[str, Any]` を潰した方針の取り残し。`mido.Message` を
+その場で組み立ててタプルに入れれば `Any` は要らなくなる（並べ替えの
+キーは既に `e[0], e[1], e[2]` だけを見ているので、メッセージ同士を
+比較することにはならない）。
+
+`str | os.PathLike[str] | BinaryIO` は `_load_midi()` / `_save_midi()` /
+`transpose_file()`（src と dst）/ `write()` の 5 か所に書かれている。
+PEP 695 の `type` 文で別名を付けられる（`clip_range()` で既に PEP 695 を
+使っている）。読み込み用と書き出し用で別名を分けるかは、実装時に決める。
+
+---
+
+## TODO-022. `Player` の引数の引き回しを整理する
+
+- [ ] `sec_min` / `sec_max` の持たせ方を決めて、決めたとおりにする
+- [ ] `play_th()` の `if not note_info` を `is None` にする
+- [ ] `play_th()` の、debug ログのためだけの時刻計算を見直す
+- [ ] `WavApp.__init__()` の `print()` を `main()` へ移す
+
+モデル / effort: Sonnet / medium
+
+`sec_min` / `sec_max` は `play()` で 1 度決まる値なのに、`snd_key()` /
+`mk_wav()` / `play_sound()` / `play_th()` / `_play_main()` の 5 つが
+受け取って下へ渡すだけになっている。インスタンスに持たせれば済む。
+
+（決めること）`snd_key()` は公開メソッドで、テストも引数付きで呼んで
+いる。引数を消すか、既定値を付けて両方の呼び方を通すか。
+
+`play_th()` の終了判定 `if not note_info:` は `is None` の意図。
+`NoteInfo` に `__bool__` は無いので動きは同じだが、読んで分かる形では
+ない（TODO-016 で `set_end_time()` の `if ent:` を直したのと同じ種類）。
+同じメソッドの `my_clock_base` / `now` は、debug ログに出す以外に
+使っていない。
+
+`WavApp.__init__()` は、`-m` のときに周波数への変換結果を `print()`
+している。コンストラクタの副作用なので `main()` の方が収まりが良い。
+
+---
+
+## TODO-023. 定数の置き場所と、`deepcopy` をやめる
+
+- [ ] `DRUM_CHANNEL` を `midi_utils.py` へ移す
+- [ ] `set_end_time()` の `copy.deepcopy` をやめる
+- [ ] 繰り返している「絞り込むチャンネル」の型に別名を付ける
+
+モデル / effort: Sonnet / low
+
+`DRUM_CHANNEL`（9）は `midi_writer.py` にあるが、MIDI 仕様の定数で、
+`__main__.py`（`--drums` のヘルプ）と `tests/conftest.py` からも使って
+いる。`DEFAULT_TEMPO` を `midi_utils.py` へ移したのと同じ理由が当て
+はまる（TODO-016）。公開 API なので、`__init__.py` の `__all__` と
+`docs/REFERENCE.md` の表も追随させる。
+
+`set_end_time()` の `copy.deepcopy(in_data)` は、スカラーしか持たない
+dataclass には過剰。元のリストを変更しない性質は保ったまま、新しい
+`NoteInfo` を作る形にできる。5 万音で実測:
+
+```
+deepcopy    : 0.284 sec
+replace()   : 0.077 sec
+```
+
+`list[int] | tuple[int, ...] | None` は `midi_parser.py` の
+`parse1()` / `parse()` と、`Parser` の同名メソッドの 4 か所にある。
+TODO-021 と同じく `type` 文で別名を付けられる。
+
+---
+
+## TODO-024. `click_utils.py` / `mylog.py` に型注釈を付ける
+
+- [ ] 3 プロジェクトを揃えるかどうかを決める
+- [ ] 型注釈を付ける
+
+モデル / effort: Sonnet / medium
+
+CLAUDE.md には「型ヒントは全モジュールに付いている」と書いてあるが、
+実際には次が未注釈:
+
+- `click_utils.py` の `click_common_opts()` の戻り値、内側の
+  `_decorator(func)` の引数と戻り値
+- `mylog.py` の `loggerInit()` の `out=sys.stderr`、`exmsg()` の `ex`
+
+**この 2 ファイルは `ytstreetorgan` / `tmr` と同一**なので、直すなら
+3 プロジェクトで揃える必要がある（TODO-007 / TODO-014）。
+
+（決めること）3 プロジェクトを同時に直すか、この場では CLAUDE.md の
+記述の方を実態に合わせるか。デコレータの型は
+`Callable[..., Any]` で済ませるか `ParamSpec` を使うかも決める。
 
 ---
 
