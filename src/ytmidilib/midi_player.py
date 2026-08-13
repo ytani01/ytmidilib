@@ -280,9 +280,10 @@ class Player:
             daemon=True)
         th.start()
 
-        abs_time = 0.0
+        abs_time = pos_sec
         my_clock_base = -1.0
         clock_delay = 0.0
+        first_play = True
 
         for i, note_info in enumerate(data):
             if self._stop_event.is_set():
@@ -297,10 +298,11 @@ class Player:
             delay = note_info.abs_time - abs_time
             logger.debug('delay={}', delay)
 
-            if i == 0 and delay > self.FIRST_DELAY_MAX:
+            if first_play and delay > self.FIRST_DELAY_MAX:
                 logger.warning('delay:{} too long ..', delay)
                 delay = self.FIRST_DELAY_MAX
                 logger.warning('[fix] delay={}', delay)
+            first_play = False
 
             if delay > 0:
                 delay -= clock_delay  # time adjustment
