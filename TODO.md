@@ -1,101 +1,23 @@
 # TODO
 
-**残っている項目: TODO-016 .. TODO-019。** これまでに 15 件を決着させた。
+**残っている項目: TODO-017 .. TODO-019。** これまでに 16 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る。**番号は `TODO-020` から。**
 
-以下の 5 項目は、全体を読み直して洗い出したリファクタリング。
-**番号の順に着手する**ことを想定して並べてある（この 5 項目に限り、
-番号が着手順を表す）。理由は次のとおり。
+以下の 3 項目は、全体を読み直して洗い出したリファクタリングの残り
+（015 / 016 は決着済み）。**番号の順に着手する**ことを想定して並べて
+ある（この一連の項目に限り、番号が着手順を表す）。理由は次のとおり。
 
-- **015（ruff）を最初に。** 規則を増やすと既存コードに指摘が出る。
-  先に一掃しておけば、あとの項目の差分がリファクタリング本体だけになる
-- **016（`Parser`）を次に。** 受け渡しのデータ構造そのものなので、
-  ここが決まらないと 018 の CLI 側も揺れる
 - **019（docstring）を最後に。** 構造が動く前に整えると書き直しになる
-- 017 は独立したバグ修正で、どこに置いても構わない。016 と 018 の間に
-  挟んで、**Sonnet で続けて進められる並び**（017 → 018 → 019）にした
+- 017 は独立したバグ修正で、どこに置いても構わない。018 の前に置いて、
+  **Sonnet で続けて進められる並び**（017 → 018 → 019）にした
 
-モデルの切り替えは 016 の前後の 2 回で済む。
+残りは 3 つとも Sonnet なので、モデルの切り替えは要らない。
 
 | 番号 | 見出し | モデル / effort |
 |---|---|---|
-| 015 | ruff の規則を増やす | Sonnet / low |
-| 016 | `Parser` の責務と、解析結果の型を整える | Opus / high |
 | 017 | `Wav.mk_wav()` が短すぎる音で失敗する | Sonnet / medium |
 | 018 | CLI の定型処理と、重複した小さな処理をまとめる | Sonnet / medium |
 | 019 | docstring の言語とスタイルを揃える | Sonnet / low |
-
----
-
-## TODO-016. `Parser` の責務と、解析結果の型を整える
-
-- [ ] `self._channel_set` を持つのをやめる
-- [ ] self を使わないメソッドの置き場所を決める
-- [ ] 可視化を別モジュールに分けるか決める
-- [ ] `set_end_time()` の「最終イベント時刻」の求め方を明示的にする
-- [ ] `mk_event_list()` の戻り値に型を付ける
-- [ ] `VisualData['data']` に型を付ける
-- [ ] `NoteInfo` を dataclass にするか決めて、決めたとおりにする
-- [ ] `DEFAULT_TEMPO` を適切なモジュールへ移し、`__all__` に足す
-- [ ] `conftest.py` の `DEFAULT_TEMPO` の import を公開 API 経由にする
-
-モデル / effort: Opus / high
-
-責務の整理と型付けは同じコードを触るので、分けると二度手間になる。
-`DEFAULT_TEMPO` の移動も `midi_parser.py` に触るため、ここに含めた。
-
-### 責務
-
-`Parser` は `parse()` の中で `self._channel_set` に代入しているが、
-同じものを戻り値にも入れていて冗長。外から読む手段も無い。
-
-`parse1()` / `set_end_time()` / `mk_event_list()` / `mk_visual()` は
-`self._dbg` 以外に self を使っていない。クラスに属する必要が無い。
-
-可視化（`mk_visual()` / `format_visual()` / `print_visual()`）は
-`parse -v` 専用で、再生経路とは独立している。`Parser` から切り離せる。
-
-`set_end_time()` の末尾:
-
-```python
-if ent:
-    for idx_list in note_start.values():
-        ...
-```
-
-`ent` はループ変数の残り（最後のエントリ）で、これを「最終イベント時刻」
-として使っている。`NoteInfo` に `__bool__` は無いので `if ent:` は
-`is not None` と同じだが、読んで分かる形ではない。
-
-### 型
-
-`mk_event_list()` の戻り値と `VisualData['data']` が
-`list[dict[str, Any]]` で、イベントの構造がコードから読めない。
-`ParsedMidi` / `VisualData` は既に `TypedDict` にしてあるので、
-中身も同じように定義する。
-
-`end_time` が `None` のままの `NoteInfo` を `mk_event_list()` に渡すと、
-`sorted()` が `None` との比較で `TypeError` になる。`parse()` を通れば
-必ず設定されるが、手で組み立てた `NoteInfo` では起きうる。
-型を締めるついでに、ここの扱いも決める。
-
-`NoteInfo` は手書きの `__init__`。dataclass にすると `__eq__` が付いて
-テストが書きやすくなる（今は同じ内容でも比較できない）。ただし
-`abs_time` / `end_time` を `round()` している分は `__post_init__` に移す
-必要がある。
-
-### `DEFAULT_TEMPO`
-
-`midi_parser.py` にあるが、`midi_writer.write()` の既定値でもある。
-パーサ固有のものではなく MIDI 仕様の既定値なので、`midi_utils.py` の
-方が収まりが良い。`__all__` にも無いため、`tests/conftest.py` が
-`from ytmidilib.midi_parser import DEFAULT_TEMPO` と内部モジュールを
-直接読んでいる。
-
-（決めること）可視化を `midi_visual.py` として分けるか、`Parser` に
-置いたままにするか。分けると公開 API とドキュメントの構成も変わる。
-`NoteInfo` を dataclass にするかは、公開 API の形が変わるので
-`ytstreetorgan` 側への影響も見る。
 
 ---
 
@@ -204,8 +126,8 @@ click のコマンド関数は戻り値にしか型注釈が無い。CLAUDE.md �
 
 モデル / effort: Sonnet / low
 
-**構造を動かす項目（016 / 018）が済んでから。** 先にやると、移動や
-削除で書き直しになる。
+**構造を動かす項目（018）が済んでから。** 先にやると、移動や
+削除で書き直しになる（016 は決着済み）。
 
 CLAUDE.md では「docstring は numpy スタイル、コメント・ドキュメントは
 日本語」としているが、英語のまま残っているものがある
@@ -232,6 +154,7 @@ CLAUDE.md の「長さは 0.02 秒単位に丸めて」は、実装（`snd_key()
 1 項目 1 ファイル。`archives/todo/` にある（新しい順）。
 **やらないと決めたものの理由もそこにある。** 蒸し返す前に読むこと。
 
+- [**TODO-016.** `Parser` の責務と、解析結果の型を整える](archives/todo/TODO-016.%20Parser%20の責務と、解析結果の型を整える.md)
 - [**TODO-015.** ruff の規則を増やす](archives/todo/TODO-015.%20ruff%20の規則を増やす.md)
 - [**TODO-014.** `click_utils.py` を導入する](archives/todo/TODO-014.%20click_utils.py%20を導入する.md)
 - [**TODO-013.** `write()` を file-like に対応させる（要求書 3 通目）](archives/todo/TODO-013.%20write%28%29%20を%20file-like%20に対応させる（要求書%203%20通目）.md)
