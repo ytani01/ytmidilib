@@ -70,11 +70,22 @@ class Wav:
         Returns
         -------
         wav: NDArray[np.int16]
+
+        Raises
+        ------
+        ValueError
+            `sec` が短すぎて、サンプルが1つも取れない場合
         """
         logger.debug('')
 
+        n_samples = int(self._rate * self._sec)
+        if n_samples <= 0:
+            raise ValueError(
+                f'sec too short to generate any sample: '
+                f'sec={self._sec}, rate={self._rate}')
+
         # サンプリングする位置(秒)のarray
-        sample_sec = np.arange(self._rate * self._sec) / self._rate
+        sample_sec = np.arange(n_samples) / self._rate
 
         # -32767 .. 32767 の sin波
         sin_wave = self.AMPLITUDE * np.sin(
@@ -90,9 +101,12 @@ class Wav:
         in_len = int(sin_wave.size * self.FADE_IN_RATIO)
         sin_wave[:in_len] *= np.arange(in_len) / in_len
 
+        # out_len が 0 だと sin_wave[-0:] が配列全体を指してしまい、
+        # 長さ0の右辺との演算でValueErrorになるため、掛けない
         out_len = int(sin_wave.size * self.FADE_OUT_RATIO)
-        sin_wave[-out_len:] *= (
-            (out_len - 1) - np.arange(out_len)) / out_len
+        if out_len > 0:
+            sin_wave[-out_len:] *= (
+                (out_len - 1) - np.arange(out_len)) / out_len
 
         return np.array(sin_wave, dtype=np.int16)
 

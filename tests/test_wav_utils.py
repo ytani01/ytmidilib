@@ -81,6 +81,21 @@ def test_mk_wav_freq(freq: float) -> None:
     assert peak_freq == pytest.approx(freq, abs=2.0)
 
 
+@pytest.mark.parametrize('sec', [0.0, 0.00004])
+def test_mk_wav_too_short(sec: float) -> None:
+    """サンプルが1つも取れない長さは ValueError になる"""
+    with pytest.raises(ValueError):
+        Wav(FREQ, sec, RATE)
+
+
+def test_mk_wav_short_no_error() -> None:
+    """フェードアウトが掛からないほど短くても、サンプルが取れれば成功する"""
+    sec = 1 / RATE  # サンプル1個分
+    wav = Wav(FREQ, sec, RATE).wav
+
+    assert len(wav) == 1
+
+
 def test_save(tmp_path: Path) -> None:
     """wav形式 で保存できる(モノラル / 16bit)"""
     outfile = tmp_path / 'out.wav'
