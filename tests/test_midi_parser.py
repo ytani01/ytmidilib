@@ -11,11 +11,10 @@ from pathlib import Path
 
 import mido
 import pytest
+from conftest import LogMessages, MkMidiFile
 
 from ytmidilib import DRUM_CHANNEL, NoteInfo, Parser
 from ytmidilib.midi_parser import DEFAULT_TEMPO
-
-from conftest import LogMessages, MkMidiFile
 
 TPB = 480
 """テストで使う分解能 [tick/beat]"""

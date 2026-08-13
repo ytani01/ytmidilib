@@ -15,13 +15,19 @@ from pathlib import Path
 
 import mido
 import pytest
+from conftest import CountMsgTypes, LogMessages, MkMidiFile
 
 from ytmidilib import (
-    DEF_TICKS_PER_BEAT, DRUM_CHANNEL, NOTE_N, NoteInfo, Parser,
-    transpose, transpose_file, write)
+    DEF_TICKS_PER_BEAT,
+    DRUM_CHANNEL,
+    NOTE_N,
+    NoteInfo,
+    Parser,
+    transpose,
+    transpose_file,
+    write,
+)
 from ytmidilib.midi_parser import DEFAULT_TEMPO
-
-from conftest import CountMsgTypes, LogMessages, MkMidiFile
 
 
 def _warnings(log_messages: LogMessages) -> list[str]:

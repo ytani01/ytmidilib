@@ -266,7 +266,7 @@ class Player:
         理想時刻と実時刻のずれ(clock_delay)を次のsleepから引くことで、
         ずれの累積を防ぐ。
         """
-        note_q: "queue.Queue[NoteInfo | None]" = queue.Queue()
+        note_q: queue.Queue[NoteInfo | None] = queue.Queue()
 
         th = threading.Thread(
             target=self.play_th,

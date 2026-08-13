@@ -10,7 +10,12 @@ from .midi_parser import NoteInfo, ParsedMidi, Parser, VisualData
 from .midi_player import Player
 from .midi_utils import FREQ_BASE, NOTE_BASE, NOTE_N, note2freq
 from .midi_writer import (
-    DEF_TICKS_PER_BEAT, DRUM_CHANNEL, transpose, transpose_file, write)
+    DEF_TICKS_PER_BEAT,
+    DRUM_CHANNEL,
+    transpose,
+    transpose_file,
+    write,
+)
 from .wav_utils import Wav
 
 __author__ = 'Yoichi Tanibayashi'

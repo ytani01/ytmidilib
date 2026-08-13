@@ -9,7 +9,14 @@ import pygame
 from loguru import logger
 
 from . import (
-    DRUM_CHANNEL, Parser, Player, Wav, __version__, note2freq, transpose_file)
+    DRUM_CHANNEL,
+    Parser,
+    Player,
+    Wav,
+    __version__,
+    note2freq,
+    transpose_file,
+)
 from .click_utils import click_common_opts
 from .mylog import loggerInit
 
