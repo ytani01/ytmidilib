@@ -1,89 +1,11 @@
 # TODO
 
-**残っている項目: TODO-018 .. TODO-019。** これまでに 17 件を決着させた。
+**残っている項目: TODO-019。** これまでに 18 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る。**番号は `TODO-020` から。**
 
-以下の 2 項目は、全体を読み直して洗い出したリファクタリングの残り
-（015 / 016 / 017 は決着済み）。**番号の順に着手する**ことを想定して
-並べてある（この一連の項目に限り、番号が着手順を表す）。理由は次の
-とおり。
-
-- **019（docstring）を最後に。** 構造が動く前に整えると書き直しになる
-
-残りは 2 つとも Sonnet なので、モデルの切り替えは要らない。
-
-| 番号 | 見出し | モデル / effort |
-|---|---|---|
-| 018 | CLI の定型処理と、重複した小さな処理をまとめる | Sonnet / medium |
-| 019 | docstring の言語とスタイルを揃える | Sonnet / low |
-
----
-
-## TODO-018. CLI の定型処理と、重複した小さな処理をまとめる
-
-- [x] 4 つのサブコマンドで繰り返している形を 1 か所にまとめる
-- [x] `loggerInit()` が二重に呼ばれるのを整理する
-- [x] click のコマンド関数に引数の型注釈を付ける
-- [x] 範囲に丸める処理（3 か所）
-- [x] pygame mixer の初期化 / 終了（2 か所）
-- [x] パスと file-like の分岐（`midi_writer.py` に 3 か所）
-- [x] `play_sound()` の音量計算の数値に名前を付ける
-
-モデル / effort: Sonnet / medium
-
-mixer の初期化は `__main__.py` と `midi_player.py` にまたがっていて、
-CLI の整理と同じ範囲を触る。まとめて 1 項目にした。
-
-### CLI
-
-`__main__.py` の `parse` / `play` / `wav` / `transpose` は、どれも
-
-```python
-loggerInit(debug)
-logger.debug('command={!r}', ctx.command.name)
-app = ...App(...)
-try:
-    app.main()
-finally:
-    logger.debug('finally')
-    app.end()
-```
-
-の形を繰り返している。`main()` / `end()` を持つ App を受け取って
-呼ぶヘルパーにまとめられる。
-
-`cli` group でも `loggerInit(debug)` を呼んでいるので、サブコマンドを
-実行すると 2 回初期化される（`logger.remove()` してから `add()` する
-ので実害は無いが、意図が読み取りにくい）。
-
-click のコマンド関数は戻り値にしか型注釈が無い。CLAUDE.md の
-「型ヒントは全モジュールに付いており、新規コードでも省略しない」と
-食い違っている。
-
-### 重複
-
-`min(max(...))` で範囲に丸める処理が 3 か所にある。
-
-- `midi_player.py` の `Player.within_range()`
-- `wav_utils.py` の `Wav.play()`（音量）
-- `midi_writer.py` の `_shift_note()`（ノート番号）
-
-`pygame.mixer.init(frequency=..., channels=1)` は `Player.init_mixer()`
-と `WavApp.main()` の両方にある。`quit()` も `Player.close()` と
-`WavApp.end()` の 2 か所。
-
-`midi_writer.py` の `isinstance(x, (str, os.PathLike))` による分岐は、
-`transpose_file()` に 2 つ（読み / 書き）、`write()` に 1 つある。
-
-`play_sound()` の `snd.set_volume(note_info.velocity / 128 / 8)` は、
-128 も 8 も説明が無い。
-
-（決めること）共通化したものをどこに置くか。`within_range()` は
-`Player` の公開 staticmethod でテストもあるので、移すなら
-呼び出し側の互換を考える。
-→ **`midi_utils.py` に共通関数を作り、`Player.within_range()` はそれを
-呼ぶ薄いラッパーにする。** 既存の公開 staticmethod・テストはそのまま
-残す。
+TODO-019 は、全体を読み直して洗い出したリファクタリングの最後の 1 項目
+（015 / 016 / 017 / 018 は決着済み）。構造が動く前に docstring を
+整えると書き直しになるため、最後に回してあった。
 
 ---
 
@@ -123,6 +45,7 @@ CLAUDE.md の「長さは 0.02 秒単位に丸めて」は、実装（`snd_key()
 1 項目 1 ファイル。`archives/todo/` にある（新しい順）。
 **やらないと決めたものの理由もそこにある。** 蒸し返す前に読むこと。
 
+- [**TODO-018.** CLI の定型処理と、重複した小さな処理をまとめる](archives/todo/TODO-018.%20CLI%20の定型処理と、重複した小さな処理をまとめる.md)
 - [**TODO-017.** `Wav.mk_wav()` が短すぎる音で失敗する](archives/todo/TODO-017.%20Wav.mk_wav%28%29%20が短すぎる音で失敗する.md)
 - [**TODO-016.** `Parser` の責務と、解析結果の型を整える](archives/todo/TODO-016.%20Parser%20の責務と、解析結果の型を整える.md)
 - [**TODO-015.** ruff の規則を増やす](archives/todo/TODO-015.%20ruff%20の規則を増やす.md)
