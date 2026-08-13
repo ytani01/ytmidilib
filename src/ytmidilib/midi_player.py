@@ -263,9 +263,9 @@ class Player:
     def _play_main(self, data: list[NoteInfo], pos_sec: float) -> None:
         """再生の本体
 
-        メインスレッドが time.sleep() でスケジューリングし、
+        メインスレッドが threading.Event.wait() でスケジューリングし、
         実際の発音はワーカースレッドが行う。
-        理想時刻と実時刻のずれ(clock_delay)を次のsleepから引くことで、
+        理想時刻と実時刻のずれ(clock_delay)を次のwaitから引くことで、
         ずれの累積を防ぐ。
         """
         note_q: queue.Queue[NoteInfo | None] = queue.Queue()

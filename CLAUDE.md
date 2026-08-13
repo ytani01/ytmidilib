@@ -100,15 +100,23 @@ parsed_data = {
   全部先に生成してキャッシュする**。キャッシュキーは `(note, 丸めた長さ)` で、
   長さは、0.5 秒を超える場合は 0.02 秒単位、0.5 秒以下は 0.01 秒単位に
   丸めて種類数を抑えている（`snd_key()`）。
-  再生ループはメインスレッドが `time.sleep()` でスケジューリングし、
-  実際の発音は `queue.Queue` 経由でワーカースレッドが行う。`clock_delay`
-  （理想時刻と実時刻の差）を次の sleep から引くことで累積ずれを補正する。
+  再生ループはメインスレッドが `threading.Event.wait()` でスケジューリング
+  し、実際の発音は `queue.Queue` 経由でワーカースレッドが行う。
+  `clock_delay`（理想時刻と実時刻の差）を次の wait から引くことで
+  累積ずれを補正する。
 - `wav_utils.py` — `Wav` が numpy で sin波を生成。前後にフェードを掛けて
   クリックノイズを消しているのが要点（この処理を外すとブツブツ鳴る）。
   再生は pygame の `sndarray`。
 - `midi_utils.py` — `note2freq()`（A4=440Hz, note 69 基準）と関連定数。
-  MIDI 仕様の既定テンポ `DEFAULT_TEMPO`（120 BPM 相当）もここ。
+  MIDI 仕様の既定テンポ `DEFAULT_TEMPO`（120 BPM 相当）、`DRUM_CHANNEL`
+  （打楽器チャンネル）、範囲に丸める `clip_range()` もここ。
   パーサと `write()` の両方が使うため（TODO-016）。
+- `midi_writer.py` — `write()`（`NoteInfo` のリストから MIDI ファイルを
+  書き出す）と `transpose()` / `transpose_file()`（移調）。`transpose()`
+  は解析結果を移調し、`transpose_file()` は MIDI ファイルを読んで移調し
+  ファイルへ書き出す（内部で `transpose()` は使わず、mido のオブジェクトを
+  直接書き換える）。打楽器チャンネル（`DRUM_CHANNEL`）は既定では移調せず、
+  `--drums` 相当のフラグで対象にできる。
 - `mylog.py` — loguru の薄いラッパー。`loggerInit()` が出力先と水準を
   決め、`exmsg()` が例外を1行の文字列にする。**`ytstreetorgan` /
   `tmr` と同一のファイル**なので、直すときは他のプロジェクトも揃える
@@ -119,12 +127,13 @@ parsed_data = {
   （TODO-014）。
 
 pygame の mixer はモノラル (`channels=1`) で初期化する。`Player` と
-`WavApp` がそれぞれ `pygame.mixer.init()` を呼ぶ。
+`WavApp` は、どちらも `wav_utils.init_mixer()` 経由で初期化する
+（初期化済みなら何もしないので、二重初期化にはならない）。
 
-`__main__.py` は click の group。各サブコマンドは先頭で
-`loggerInit(debug)` を呼び（出力先を決めるのはアプリ側の仕事）、
-`MidiApp` / `WavApp` / `TransposeApp` を生成して
-`main()` → `finally: end()` の形で呼ぶ。
+`__main__.py` は click の group。各サブコマンドは共通の `run_app()` を
+呼び、`run_app()` が `loggerInit(debug)`（出力先を決めるのはアプリ側の
+仕事）→ `MidiApp` / `WavApp` / `TransposeApp` の生成 →
+`main()` → `finally: end()` をまとめて行う（TODO-018）。
 
 共通オプションは `COMMON_OPTS`（`click_common_opts` を 1 度だけ呼んだ
 もの）を各コマンドに付けて与える。これが `click.pass_context` も含むので、

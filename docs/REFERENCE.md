@@ -55,6 +55,7 @@ from ytmidilib import (
     Player,                                     # 再生
     Wav,                                        # 音源生成
     write, transpose, transpose_file,           # 書き出し・移調
+    init_mixer, quit_mixer,                     # mixer の初期化/終了
     note2freq,                                  # 変換
     FREQ_BASE, NOTE_BASE, NOTE_N, DEFAULT_TEMPO,  # 定数
     DEF_TICKS_PER_BEAT, DRUM_CHANNEL,
@@ -214,10 +215,14 @@ Parser(debug: bool = False)
 
 ```python
 parse(midi_file: str | os.PathLike[str],
-      channel: list[int] | tuple[int, ...] | None = None) -> ParsedMidi
+      channel: ChannelFilter = None) -> ParsedMidi
 ```
 
 MIDI ファイルを読み、`ParsedMidi` を返す。**これが主役。**
+
+`ChannelFilter` は `list[int] | tuple[int, ...] | None` の型別名
+（`midi_parser.py` で定義。公開 API ではないので、自分のコードで
+インポートする対象ではない）。
 
 | 引数 | 意味 |
 |---|---|
@@ -361,9 +366,9 @@ play(parsed_midi: ParsedMidi,
 
 再生中にもう一度呼ぶと `RuntimeError`。先に `stop()` を呼ぶこと。
 
-再生ループはメインスレッドが `time.sleep()` 相当で刻み、実際の発音は
-ワーカースレッドが行う。理想時刻と実時刻の差を次の待ち時間から引くので、
-ずれは累積しない。
+再生ループはメインスレッドが `threading.Event.wait()` で刻み、実際の
+発音はワーカースレッドが行う。理想時刻と実時刻の差を次の待ち時間から
+引くので、ずれは累積しない。
 
 ```python
 from ytmidilib import Player, parse
@@ -405,15 +410,16 @@ finally:
 
 ```python
 init_mixer() -> None
-mk_wav(in_data, sec_min, sec_max) -> dict[tuple[int, float], pygame.mixer.Sound]
-snd_key(note_data, sec_min, sec_max) -> tuple[int, float]
+mk_wav(in_data: list[NoteInfo]) -> dict[tuple[int, float], pygame.mixer.Sound]
+snd_key(note_data: NoteInfo) -> tuple[int, float]
 ```
 
 - `init_mixer()` — pygame の mixer を初期化する。初期化済みなら何もしない。
   `mk_wav()` の先頭で呼ばれるので、普通は自分で呼ばなくてよい
 - `mk_wav()` — 必要な音を全部作ってキャッシュする。`play()` が呼ぶ
 - `snd_key()` — キャッシュのキー `(ノート番号, 丸めた長さ)` を返す。
-  長さを 0.02 秒単位に丸めることで、生成する音源の種類数を抑えている
+  長さは、0.5 秒を超える場合は 0.02 秒単位、0.5 秒以下は 0.01 秒単位に
+  丸めることで、生成する音源の種類数を抑えている
 
 キャッシュは `close()` で捨てられる。同じ曲を繰り返し鳴らすなら、
 `Player` を作り直さず使い回すほうが速い。
@@ -474,13 +480,17 @@ with Player() as player:
 ### 6.2 `transpose_file()`
 
 ```python
-transpose_file(src, dst, n: int,
+transpose_file(src: MidiSource, dst: MidiDest, n: int,
                clip: bool = False, drums: bool = False) -> None
 ```
 
 MIDI ファイルを移調して書き出す。`src` / `dst` は、パス
 （`str` / `os.PathLike`）でも、開いたバイナリファイル
 （`io.BytesIO` など）でもよい。
+
+`MidiSource` / `MidiDest` は、どちらも
+`str | os.PathLike[str] | BinaryIO` の型別名（`midi_writer.py` で定義。
+公開 API ではない）。`write()` の `midi_file` も `MidiDest`。
 
 **`note_on` / `note_off` の `note` だけを書き換える。** 他のメッセージ・
 トラック構成・`ticks_per_beat`・ファイルの type はそのまま。読み込んだ
@@ -529,7 +539,8 @@ Wav(freq: float, sec: float = Wav.DEF_SEC, rate: int = Wav.DEF_RATE,
 
 メソッド:
 
-- `mk_wav() -> NDArray[np.int16]` — 音源データを作る。コンストラクタが呼ぶ
+- `mk_wav() -> NDArray[np.int16]` — 音源データを作る。コンストラクタが呼ぶ。
+  `sec` が短すぎてサンプルが1つも取れない場合は `ValueError`
 - `save(outfile)` — wav 形式で保存する。**音声デバイスは要らない**
 - `play(vol=DEF_VOL)` — 鳴らして、鳴り終わるまで待つ。
   範囲外の `vol` は丸めて WARNING を出す
@@ -541,21 +552,23 @@ Wav(freq: float, sec: float = Wav.DEF_SEC, rate: int = Wav.DEF_RATE,
 （`Player` は自前で初期化するので、この手間は要らない）。
 
 ```python
-import pygame
-from ytmidilib import Wav, note2freq
+from ytmidilib import Wav, init_mixer, quit_mixer, note2freq
 
 w = Wav(note2freq(60), sec=0.5)
 w.save('c4.wav')                              # 保存だけならこれで済む
 
-pygame.mixer.init(frequency=Wav.DEF_RATE, channels=1)
+init_mixer(Wav.DEF_RATE)
 w.play(0.3)
-pygame.mixer.quit()
+quit_mixer()
 ```
+
+`init_mixer(rate)` / `quit_mixer()` は `wav_utils` の関数（トップレベルに
+公開）。初期化済みなら `init_mixer()` は何もしない。
 
 ### 7.2 `write()` — `NoteInfo` から MIDI ファイル
 
 ```python
-write(midi_file, note_info: list[NoteInfo],
+write(midi_file: MidiDest, note_info: list[NoteInfo],
       ticks_per_beat: int = DEF_TICKS_PER_BEAT,   # 480
       tempo: int = DEFAULT_TEMPO) -> None         # 500000 usec/beat
 ```
@@ -620,7 +633,7 @@ note2freq(60)    # 261.6255653005986
 ```python
 import ytmidilib
 
-ytmidilib.__version__    # '0.2.1'
+ytmidilib.__version__    # 例: '0.5.1'
 ```
 
 バージョンは git タグから決まるので、インストール済みのメタデータから
@@ -643,7 +656,9 @@ from ytmidilib.mylog import loggerInit, exmsg
 loggerInit(debug=False)              # INFO 以上を標準エラーへ
 loggerInit(debug=True)               # DEBUG 以上
 loggerInit(debug=True, out=sys.stdout)
-loggerInit(out='app.log')            # loguru.logger.add() が受ける対象なら可
+
+with open('app.log', 'w') as f:      # 開いた file-like を渡す
+    loggerInit(out=f)
 ```
 
 - `loggerInit(debug=False, out=sys.stderr)` — 既存のシンクを全部外し
@@ -753,7 +768,7 @@ ytmidilib transpose SRC DST N [-c] [-D]
 
 | 要る | 要らない |
 |---|---|
-| `Player.play()` / `Player.mk_wav()` / `Player.init_mixer()`、`Wav.play()`、CLI の `play` | `parse()` と可視化（`Parser` の全メソッド）、`transpose()` / `transpose_file()` / `write()`、`Wav()` の生成と `save()`、`note2freq()`、CLI の `parse` / `transpose` |
+| `Player.play()` / `Player.mk_wav()` / `Player.init_mixer()`、`init_mixer()`、`Wav.play()`、CLI の `play` | `parse()` と可視化（`Parser` の全メソッド）、`transpose()` / `transpose_file()` / `write()`、`Wav()` の生成と `save()`、`note2freq()`、CLI の `parse` / `transpose` |
 
 サーバやテストなど、デバイスの無い環境で使うなら右側だけで組み立てる。
 

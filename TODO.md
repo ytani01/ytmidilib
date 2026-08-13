@@ -1,54 +1,7 @@
 # TODO
 
-**残っている項目: TODO-025。** これまでに 24 件を決着させた。
+**残っている項目は無い。** これまでに 25 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る。**番号は `TODO-026` から。**
-
----
-
-## TODO-025. ドキュメントを実装に合わせる
-
-`docs/REFERENCE.md` — 実装と食い違っているところ:
-
-- [ ] 5.3 の `mk_wav()` / `snd_key()` の引数（実際は `mk_wav(in_data)` /
-      `snd_key(note_data)`。TODO-022 で `sec_min` / `sec_max` を外した）
-- [ ] 5.3 の丸めの単位（0.5 秒超は 0.02 単位、0.5 秒以下は 0.01 単位）
-- [ ] `init_mixer()` / `quit_mixer()` を載せる。`__all__` にあるのに
-      1 章の import 例にも 7 章にも無く、7.1 の例は生の
-      `pygame.mixer.init()` のまま。10 章の表も `Player.init_mixer()` だけ
-- [ ] 7.4 の `__version__` の例（`'0.2.1'`。現在は `0.5.1`）。
-      具体的な番号を書かない形にする
-- [ ] 7.1 に `Wav.mk_wav()` の `ValueError`（`sec` が短すぎる場合。
-      TODO-017）を足す
-
-`CLAUDE.md` — 実装と食い違っているところ:
-
-- [ ] アーキテクチャの一覧に `midi_writer.py` が無い
-- [ ] 「`Player` と `WavApp` がそれぞれ `pygame.mixer.init()` を呼ぶ」
-      （実際は両方とも `wav_utils.init_mixer()` 経由）
-- [ ] 「各サブコマンドは先頭で `loggerInit(debug)` を呼び」
-      （実際は `run_app()` が共通で行う。TODO-018）
-- [ ] `midi_utils.py` の説明に `clip_range()` と `DRUM_CHANNEL`
-      （TODO-023 で移した）が無い
-
-3 か所に同じ食い違い:
-
-- [ ] 再生ループの待ちは `time.sleep()` ではなく
-      `threading.Event.wait()`（TODO-020）。`CLAUDE.md`、
-      `docs/REFERENCE.md` 5.1、`midi_player._play_main()` の docstring
-
-決めること:
-
-- [ ] `docs/REFERENCE.md` 8 章の `loggerInit(out='app.log')` は、
-      `mylog.loggerInit()` の型注釈 `out: TextIO` と食い違う。
-      実行はできるが型チェックは通らない。文書を型に合わせるか、
-      型を広げるか（`mylog.py` は `ytstreetorgan` / `tmr` と同一の
-      ファイルなので、型を変えるなら他も揃える。TODO-007）
-
-公開していない型別名（`ChannelFilter` / `MidiSource` / `MidiDest`）を
-リファレンスに載せるかどうかも、ついでに決める。
-
-モデル・effort: Sonnet / medium。文書だけの直しで、直す箇所は上に
-洗い出してある。サブエージェントは編成しない。
 
 ---
 
@@ -57,6 +10,7 @@
 1 項目 1 ファイル。`archives/todo/` にある（新しい順）。
 **やらないと決めたものの理由もそこにある。** 蒸し返す前に読むこと。
 
+- [**TODO-025.** ドキュメントを実装に合わせる](archives/todo/TODO-025.%20ドキュメントを実装に合わせる.md)
 - [**TODO-024.** `click_utils.py` / `mylog.py` に型注釈を付ける](archives/todo/TODO-024.%20click_utils.py%20と%20mylog.py%20に型注釈を付ける.md)
 - [**TODO-023.** 定数の置き場所と、`deepcopy` をやめる](archives/todo/TODO-023.%20定数の置き場所と、deepcopy%20をやめる.md)
 - [**TODO-022.** `Player` の引数の引き回しを整理する](archives/todo/TODO-022.%20Player%20の引数の引き回しを整理する.md)
