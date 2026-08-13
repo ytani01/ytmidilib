@@ -1,7 +1,231 @@
 # TODO
 
-**残っている項目は無い。** これまでに 14 件を決着させた。
-新しく足すときは「完了済み」の上に節を作る。**番号は `TODO-015` から。**
+**残っている項目: TODO-015 .. TODO-022。** これまでに 14 件を決着させた。
+新しく足すときは「完了済み」の上に節を作る。**番号は `TODO-023` から。**
+
+以下の 8 項目は、全体を読み直して洗い出したリファクタリングの候補。
+番号の順に意味は無く、着手する項目は利用者が指定する。
+
+---
+
+## TODO-015. `Wav.mk_wav()` が短すぎる音で失敗する
+
+- [ ] `out_len == 0` のときにフェードアウトを掛けないようにする
+- [ ] サンプル数を整数で求める
+- [ ] 短い長さ（0 を含む）のテストを足す
+
+モデル / effort: Sonnet / medium
+
+`wav_utils.py` の `mk_wav()` は、フェードアウトを
+`sin_wave[-out_len:] *= ...` で掛けている。`out_len` が 0 になると
+`[-0:]` が**配列全体**を指すため、長さ 0 の配列との演算になって
+例外が出る。
+
+```
+Wav(440, 0.00004, 22050)
+-> ValueError: non-broadcastable output operand with shape (1,)
+   doesn't match the broadcast shape (0,)
+```
+
+`Player` は `SEC_MIN`（0.02 秒）で下限を切るので再生経路では起きないが、
+`ytmidilib wav 440 -t 0.00004` では通ってしまう。
+
+同じ箇所の `np.arange(self._rate * self._sec)` は float を渡している。
+サンプル数が浮動小数点の丸め任せになるので、整数で求める。
+
+（決めること）長さ 0 を「空の音源」として通すか、エラーにするか。
+
+---
+
+## TODO-016. 解析結果の型を締める（`dict[str, Any]` をやめる）
+
+- [ ] `mk_event_list()` の戻り値に型を付ける
+- [ ] `VisualData['data']` に型を付ける
+- [ ] `NoteInfo` を dataclass にするか決めて、決めたとおりにする
+
+モデル / effort: Opus / medium
+
+`midi_parser.py` の `mk_event_list()` の戻り値と `VisualData['data']` が
+`list[dict[str, Any]]` で、イベントの構造がコードから読めない。
+`ParsedMidi` / `VisualData` は既に `TypedDict` にしてあるので、
+中身も同じように定義する。
+
+`end_time` が `None` のままの `NoteInfo` を `mk_event_list()` に渡すと、
+`sorted()` が `None` との比較で `TypeError` になる。`parse()` を通れば
+必ず設定されるが、手で組み立てた `NoteInfo` では起きうる。
+型を締めるついでに、ここの扱いも決める。
+
+`NoteInfo` は手書きの `__init__`。dataclass にすると `__eq__` が付いて
+テストが書きやすくなる（今は同じ内容でも比較できない）。ただし
+`abs_time` / `end_time` を `round()` している分は `__post_init__` に移す
+必要がある。
+
+（決めること）dataclass にするか。公開 API の形が変わるので、
+`ytstreetorgan` 側への影響も見る。
+
+---
+
+## TODO-017. `Parser` の状態と責務を整理する
+
+- [ ] `self._channel_set` を持つのをやめる
+- [ ] self を使わないメソッドの置き場所を決める
+- [ ] 可視化を別モジュールに分けるか決める
+- [ ] `set_end_time()` の「最終イベント時刻」の求め方を明示的にする
+
+モデル / effort: Opus / high
+
+`Parser` は `parse()` の中で `self._channel_set` に代入しているが、
+同じものを戻り値にも入れていて冗長。外から読む手段も無い。
+
+`parse1()` / `set_end_time()` / `mk_event_list()` / `mk_visual()` は
+`self._dbg` 以外に self を使っていない。クラスに属する必要が無い。
+
+可視化（`mk_visual()` / `format_visual()` / `print_visual()`）は
+`parse -v` 専用で、再生経路とは独立している。`Parser` から切り離せる。
+
+`set_end_time()` の末尾:
+
+```python
+if ent:
+    for idx_list in note_start.values():
+        ...
+```
+
+`ent` はループ変数の残り（最後のエントリ）で、これを「最終イベント時刻」
+として使っている。`NoteInfo` に `__bool__` は無いので `if ent:` は
+`is not None` と同じだが、読んで分かる形ではない。
+
+（決めること）可視化を `midi_visual.py` として分けるか、`Parser` に
+置いたままにするか。分けると公開 API とドキュメントの構成も変わる。
+
+---
+
+## TODO-018. CLI の定型処理をまとめ、型注釈を付ける
+
+- [ ] 4 つのサブコマンドで繰り返している形を 1 か所にまとめる
+- [ ] `loggerInit()` が二重に呼ばれるのを整理する
+- [ ] click のコマンド関数に引数の型注釈を付ける
+
+モデル / effort: Sonnet / medium
+
+`__main__.py` の `parse` / `play` / `wav` / `transpose` は、どれも
+
+```python
+loggerInit(debug)
+logger.debug('command={!r}', ctx.command.name)
+app = ...App(...)
+try:
+    app.main()
+finally:
+    logger.debug('finally')
+    app.end()
+```
+
+の形を繰り返している。`main()` / `end()` を持つ App を受け取って
+呼ぶヘルパーにまとめられる。
+
+`cli` group でも `loggerInit(debug)` を呼んでいるので、サブコマンドを
+実行すると 2 回初期化される（`logger.remove()` してから `add()` する
+ので実害は無いが、意図が読み取りにくい）。
+
+click のコマンド関数は戻り値にしか型注釈が無い。CLAUDE.md の
+「型ヒントは全モジュールに付いており、新規コードでも省略しない」と
+食い違っている。
+
+---
+
+## TODO-019. 重複した小さな処理を共通化する
+
+- [ ] 範囲に丸める処理（3 か所）
+- [ ] pygame mixer の初期化 / 終了（2 か所）
+- [ ] パスと file-like の分岐（`midi_writer.py` に 3 か所）
+- [ ] `play_sound()` の音量計算の数値に名前を付ける
+
+モデル / effort: Sonnet / medium
+
+`min(max(...))` で範囲に丸める処理が 3 か所にある。
+
+- `midi_player.py` の `Player.within_range()`
+- `wav_utils.py` の `Wav.play()`（音量）
+- `midi_writer.py` の `_shift_note()`（ノート番号）
+
+`pygame.mixer.init(frequency=..., channels=1)` は `Player.init_mixer()`
+と `WavApp.main()` の両方にある。`quit()` も `Player.close()` と
+`WavApp.end()` の 2 か所。
+
+`midi_writer.py` の `isinstance(x, (str, os.PathLike))` による分岐は、
+`transpose_file()` に 2 つ（読み / 書き）、`write()` に 1 つある。
+
+`play_sound()` の `snd.set_volume(note_info.velocity / 128 / 8)` は、
+128 も 8 も説明が無い。
+
+（決めること）共通化したものをどこに置くか。`within_range()` は
+`Player` の公開 staticmethod でテストもあるので、移すなら
+呼び出し側の互換を考える。
+
+---
+
+## TODO-020. `DEFAULT_TEMPO` の置き場所と公開
+
+- [ ] `DEFAULT_TEMPO` を適切なモジュールへ移す
+- [ ] `__all__` に足す
+- [ ] `conftest.py` の import を公開 API 経由にする
+
+モデル / effort: Sonnet / low
+
+`DEFAULT_TEMPO` は `midi_parser.py` にあるが、`midi_writer.write()` の
+既定値でもある。パーサ固有のものではなく、MIDI 仕様の既定値なので
+`midi_utils.py` の方が収まりが良い。
+
+`__init__.py` の `__all__` に無いため、`tests/conftest.py` が
+`from ytmidilib.midi_parser import DEFAULT_TEMPO` と内部モジュールを
+直接読んでいる。公開する値なら `__all__` に足す。
+
+---
+
+## TODO-021. docstring の言語とスタイルを揃える
+
+- [ ] 英語のまま残っている docstring を日本語にする
+- [ ] `mylog.py` / `click_utils.py` の扱いを決める
+
+モデル / effort: Sonnet / low
+
+CLAUDE.md では「docstring は numpy スタイル、コメント・ドキュメントは
+日本語」としているが、英語のまま残っているものがある
+（`play sound`、`keep num within range`、
+`parse MIDI format simply for subsequent parsing step` など）。
+
+`mylog.py` は Google スタイル（`Args:`）で書かれていて、他と揃っていない。
+`click_utils.py` は型注釈も docstring も薄い。
+
+**この 2 つは `ytstreetorgan` / `tmr` と同一ファイル**なので、直すなら
+他のプロジェクトも揃える（TODO-007 / TODO-014 と同じ扱い）。
+
+（決めること）共有ファイルに手を入れるか、この項目では ytmidilib 固有の
+モジュールだけにするか。
+
+---
+
+## TODO-022. ruff の規則を増やす
+
+- [ ] `pyproject.toml` に `[tool.ruff]` を足す
+- [ ] 有効にする規則を決める
+- [ ] 出た指摘を直す
+
+モデル / effort: Sonnet / low
+
+`pyproject.toml` に ruff の設定が無く、既定の `E4` / `E7` / `E9` / `F`
+だけで動いている。import の順（`I`）などは見ていない。
+
+`line-length` も既定の 88 のままだが、実際のコードは 79 で折り返して
+いる。
+
+（決めること）どの規則を有効にするか。`I` / `B` / `UP` あたりが候補。
+規則を増やすと既存コードに指摘が出るので、その分も含めて 1 項目とする。
+
+（注意）CLAUDE.md に書いてある「長さは 0.02 秒単位に丸めて」は、
+実装（`snd_key()`）では 0.5 秒を超えるときだけで、0.5 秒以下は 0.01
+単位。ここを直すのはどの項目でもよいので、着手したついでに直す。
 
 ---
 
