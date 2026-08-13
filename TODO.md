@@ -1,44 +1,7 @@
 # TODO
 
-**残っている項目: TODO-019。** これまでに 18 件を決着させた。
+**残っている項目: 無し。** これまでに 19 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る。**番号は `TODO-020` から。**
-
-TODO-019 は、全体を読み直して洗い出したリファクタリングの最後の 1 項目
-（015 / 016 / 017 / 018 は決着済み）。構造が動く前に docstring を
-整えると書き直しになるため、最後に回してあった。
-
----
-
-## TODO-019. docstring の言語とスタイルを揃える
-
-- [x] 英語のまま残っている docstring を日本語にする
-- [x] `mylog.py` / `click_utils.py` の扱いを決める
-- [x] CLAUDE.md の `snd_key()` の説明を実装に合わせる
-
-モデル / effort: Sonnet / low
-
-**構造を動かす項目（018）が済んでから。** 先にやると、移動や
-削除で書き直しになる（016 は決着済み）。
-
-CLAUDE.md では「docstring は numpy スタイル、コメント・ドキュメントは
-日本語」としているが、英語のまま残っているものがある
-（`play sound`、`keep num within range`、
-`parse MIDI format simply for subsequent parsing step` など）。
-
-`mylog.py` は Google スタイル（`Args:`）で書かれていて、他と揃っていない。
-`click_utils.py` は型注釈も docstring も薄い。
-
-**この 2 つは `ytstreetorgan` / `tmr` と同一ファイル**なので、直すなら
-他のプロジェクトも揃える（TODO-007 / TODO-014 と同じ扱い）。
-
-CLAUDE.md の「長さは 0.02 秒単位に丸めて」は、実装（`snd_key()`）では
-0.5 秒を超えるときだけで、0.5 秒以下は 0.01 単位。文書の直しなので
-ここでまとめて直す。
-
-（決めること）共有ファイルに手を入れるか、この項目では ytmidilib 固有の
-モジュールだけにするか。
-→ **`mylog.py` / `click_utils.py` も含めて直す。** `ytstreetorgan` /
-`tmr` への同期は別途必要になる旨を承知の上で進める。
 
 ---
 
@@ -47,6 +10,7 @@ CLAUDE.md の「長さは 0.02 秒単位に丸めて」は、実装（`snd_key()
 1 項目 1 ファイル。`archives/todo/` にある（新しい順）。
 **やらないと決めたものの理由もそこにある。** 蒸し返す前に読むこと。
 
+- [**TODO-019.** docstring の言語とスタイルを揃える](archives/todo/TODO-019.%20docstring%20の言語とスタイルを揃える.md)
 - [**TODO-018.** CLI の定型処理と、重複した小さな処理をまとめる](archives/todo/TODO-018.%20CLI%20の定型処理と、重複した小さな処理をまとめる.md)
 - [**TODO-017.** `Wav.mk_wav()` が短すぎる音で失敗する](archives/todo/TODO-017.%20Wav.mk_wav%28%29%20が短すぎる音で失敗する.md)
 - [**TODO-016.** `Parser` の責務と、解析結果の型を整える](archives/todo/TODO-016.%20Parser%20の責務と、解析結果の型を整える.md)
