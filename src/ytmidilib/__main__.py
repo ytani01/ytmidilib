@@ -138,22 +138,24 @@ class WavApp:
         logger.debug('midi_note_flag={}', midi_note_flag)
         logger.debug('play_flag={}', play_flag)
 
-        self._freq = freq
         self._outfile = outfile
+        self._midi_note = int(freq) if midi_note_flag else None
         self._vol = vol
         self._sec = sec
         self._rate = rate
         self._play_flag = play_flag
 
-        if midi_note_flag:
-            note = int(freq)
-            self._freq = note2freq(note)
-            print(f'MIDI note: {note} -> freq = {self._freq:.3f} Hz')
+        self._freq = note2freq(self._midi_note) \
+            if self._midi_note is not None else freq
 
     def main(self) -> None:
         """メイン処理
         """
         logger.debug('')
+
+        if self._midi_note is not None:
+            print(f'MIDI note: {self._midi_note} -> '
+                  f'freq = {self._freq:.3f} Hz')
 
         wav = Wav(self._freq, self._sec, self._rate, debug=self._dbg)
 

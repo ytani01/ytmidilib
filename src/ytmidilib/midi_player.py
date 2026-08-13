@@ -54,6 +54,9 @@ class Player:
 
         self._rate = rate
 
+        self._sec_min = self.SEC_MIN
+        self._sec_max = self.SEC_MAX
+
         self._snd: dict[tuple[int, float], pygame.mixer.Sound] = {}
 
         self._stop_event = threading.Event()
@@ -95,8 +98,7 @@ class Player:
         """
         return clip_range(num, n_min, n_max)
 
-    def snd_key(self, note_data: NoteInfo,
-                sec_min: float, sec_max: float) -> tuple[int, float]:
+    def snd_key(self, note_data: NoteInfo) -> tuple[int, float]:
         """音源キャッシュのキーを求める
 
         長さを丸めることで、生成する音源の種類数を抑える。
@@ -106,7 +108,8 @@ class Player:
         key: tuple
             (note_num, 丸めた長さ)
         """
-        sec = self.within_range(note_data.length(), sec_min, sec_max)
+        sec = self.within_range(
+            note_data.length(), self._sec_min, self._sec_max)
 
         if sec > 0.5:
             # 0.02 単位に丸める
@@ -116,8 +119,7 @@ class Player:
 
         return (note_data.note, key_sec)
 
-    def mk_wav(self, in_data: list[NoteInfo],
-               sec_min: float, sec_max: float
+    def mk_wav(self, in_data: list[NoteInfo]
                ) -> dict[tuple[int, float], pygame.mixer.Sound]:
         """再生に必要な音源データを、あらかじめ全て生成しておく
         """
@@ -127,13 +129,14 @@ class Player:
             if note_info.velocity == 0:
                 continue
 
-            key = self.snd_key(note_info, sec_min, sec_max)
+            key = self.snd_key(note_info)
 
             if key in self._snd:
                 continue
 
             freq = note2freq(note_info.note)
-            sec = self.within_range(note_info.length(), sec_min, sec_max)
+            sec = self.within_range(
+                note_info.length(), self._sec_min, self._sec_max)
 
             wav = Wav(freq, sec, self._rate).wav
 
@@ -141,41 +144,32 @@ class Player:
 
         return self._snd
 
-    def play_sound(self, note_info: NoteInfo,
-                   sec_min: float, sec_max: float) -> None:
+    def play_sound(self, note_info: NoteInfo) -> None:
         """
         音を鳴らす
         """
-        key = self.snd_key(note_info, sec_min, sec_max)
+        key = self.snd_key(note_info)
 
         snd = self._snd[key]
         snd.set_volume(
             note_info.velocity / self.VELOCITY_MAX / self.VOLUME_ATTENUATION)
         snd.play()
 
-    def play_th(self, note_q: "queue.Queue[NoteInfo | None]",
-                sec_min: float, sec_max: float) -> None:
+    def play_th(self, note_q: "queue.Queue[NoteInfo | None]") -> None:
         """
         発音スレッド
 
         キューから受け取ったnoteを発音する。None で終了。
         stop() が呼ばれた場合も、残りを鳴らさずに終了する。
         """
-        my_clock_base = -1.0
-
         while True:
             note_info = note_q.get()
 
-            if not note_info or self._stop_event.is_set():
+            if note_info is None or self._stop_event.is_set():
                 break
 
-            if my_clock_base < 0:
-                my_clock_base = time.time() - note_info.abs_time
-
-            now = time.time() - my_clock_base
-
-            self.play_sound(note_info, sec_min, sec_max)
-            logger.debug('{:08.3f} / {}', now, note_info)
+            self.play_sound(note_info)
+            logger.debug('{}', note_info)
 
     def play(self, parsed_midi: ParsedMidi,
              pos_sec: float = 0.0,
@@ -219,21 +213,24 @@ class Player:
         if self.is_playing():
             raise RuntimeError('already playing: call stop() first')
 
+        self._sec_min = sec_min
+        self._sec_max = sec_max
+
         data = parsed_midi['note_info']
 
-        snd = self.mk_wav(data, sec_min, sec_max)
+        snd = self.mk_wav(data)
         logger.debug('len(snd)={}', len(snd))
 
         # 前回の stop() を持ち越さない
         self._stop_event.clear()
 
         if block:
-            self._play_main(data, pos_sec, sec_min, sec_max)
+            self._play_main(data, pos_sec)
             return
 
         self._play_thread = threading.Thread(
             target=self._play_main,
-            args=(data, pos_sec, sec_min, sec_max),
+            args=(data, pos_sec),
             daemon=True)
         self._play_thread.start()
 
@@ -263,8 +260,7 @@ class Player:
         if pygame.mixer.get_init():
             pygame.mixer.stop()
 
-    def _play_main(self, data: list[NoteInfo], pos_sec: float,
-                   sec_min: float, sec_max: float) -> None:
+    def _play_main(self, data: list[NoteInfo], pos_sec: float) -> None:
         """再生の本体
 
         メインスレッドが time.sleep() でスケジューリングし、
@@ -276,7 +272,7 @@ class Player:
 
         th = threading.Thread(
             target=self.play_th,
-            args=(note_q, sec_min, sec_max),
+            args=(note_q,),
             daemon=True)
         th.start()
 

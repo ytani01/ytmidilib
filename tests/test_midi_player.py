@@ -32,8 +32,7 @@ def test_within_range(num: float, expected: float) -> None:
 def test_snd_key_note() -> None:
     """キーの 1 つ目は MIDIノート番号"""
     player = Player()
-    key = player.snd_key(NoteInfo(0.0, 0, 60, 100, 0.3),
-                         Player.SEC_MIN, Player.SEC_MAX)
+    key = player.snd_key(NoteInfo(0.0, 0, 60, 100, 0.3))
 
     assert key[0] == 60
 
@@ -42,10 +41,8 @@ def test_snd_key_clamps_length() -> None:
     """長さは sec_min .. sec_max に収める"""
     player = Player()
 
-    short = player.snd_key(NoteInfo(0.0, 0, 60, 100, 0.001),
-                           Player.SEC_MIN, Player.SEC_MAX)
-    long = player.snd_key(NoteInfo(0.0, 0, 60, 100, 10.0),
-                          Player.SEC_MIN, Player.SEC_MAX)
+    short = player.snd_key(NoteInfo(0.0, 0, 60, 100, 0.001))
+    long = player.snd_key(NoteInfo(0.0, 0, 60, 100, 10.0))
 
     assert short[1] == Player.SEC_MIN
     assert long[1] == Player.SEC_MAX
@@ -54,8 +51,7 @@ def test_snd_key_clamps_length() -> None:
 def test_snd_key_no_end_time() -> None:
     """`end_time` が未設定なら長さ 0 -> 下限に収まる"""
     player = Player()
-    key = player.snd_key(NoteInfo(0.0, 0, 60, 100),
-                         Player.SEC_MIN, Player.SEC_MAX)
+    key = player.snd_key(NoteInfo(0.0, 0, 60, 100))
 
     assert key[1] == Player.SEC_MIN
 
@@ -71,8 +67,7 @@ def test_snd_key_no_end_time() -> None:
 def test_snd_key_round(length: float, key_sec: float) -> None:
     """長さを丸めて、生成する音源の種類数を抑える"""
     player = Player()
-    key = player.snd_key(NoteInfo(0.0, 0, 60, 100, length),
-                         Player.SEC_MIN, Player.SEC_MAX)
+    key = player.snd_key(NoteInfo(0.0, 0, 60, 100, length))
 
     assert key[1] == pytest.approx(key_sec)
 
@@ -81,8 +76,7 @@ def test_snd_key_cache_hit() -> None:
     """わずかに違う長さの音は、同じキーになる(キャッシュが効く)"""
     player = Player()
     keys = {
-        player.snd_key(NoteInfo(0.0, 0, 60, 100, length),
-                       Player.SEC_MIN, Player.SEC_MAX)
+        player.snd_key(NoteInfo(0.0, 0, 60, 100, length))
         for length in (0.600, 0.601, 0.6049)
     }
 
@@ -92,10 +86,8 @@ def test_snd_key_cache_hit() -> None:
 def test_snd_key_differs_by_note() -> None:
     """音の高さが違えば別のキー"""
     player = Player()
-    key60 = player.snd_key(NoteInfo(0.0, 0, 60, 100, 0.3),
-                           Player.SEC_MIN, Player.SEC_MAX)
-    key64 = player.snd_key(NoteInfo(0.0, 0, 64, 100, 0.3),
-                           Player.SEC_MIN, Player.SEC_MAX)
+    key60 = player.snd_key(NoteInfo(0.0, 0, 60, 100, 0.3))
+    key64 = player.snd_key(NoteInfo(0.0, 0, 64, 100, 0.3))
 
     assert key60 != key64
 
