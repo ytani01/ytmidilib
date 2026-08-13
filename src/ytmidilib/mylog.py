@@ -20,6 +20,7 @@ def main(debug: bool = False):
 """
 
 import sys
+from typing import TextIO
 
 from loguru import logger
 
@@ -39,7 +40,7 @@ def logLevel(debug: bool = False) -> str:
     return "DEBUG" if debug else "INFO"
 
 
-def loggerInit(debug: bool = False, out=sys.stderr) -> None:
+def loggerInit(debug: bool = False, out: TextIO = sys.stderr) -> None:
     """logger を初期化する
 
     各 CLI コマンドの先頭で 1 度だけ呼ぶ。
@@ -55,6 +56,6 @@ def loggerInit(debug: bool = False, out=sys.stderr) -> None:
     logger.add(out, format=LOG_FMT, level=logLevel(debug))
 
 
-def exmsg(ex) -> str:
+def exmsg(ex: Exception) -> str:
     """例外を 1 行の文字列にする（``ValueError: 使えない名前です`` の形）。"""
     return f'{type(ex).__name__}: {ex}'

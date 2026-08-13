@@ -1,30 +1,7 @@
 # TODO
 
-**残っている項目: TODO-024。** これまでに 23 件を決着させた。
+**残っている項目: なし。** これまでに 24 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る。**番号は `TODO-025` から。**
-
----
-
-## TODO-024. `click_utils.py` / `mylog.py` に型注釈を付ける
-
-- [ ] 3 プロジェクトを揃えるかどうかを決める
-- [ ] 型注釈を付ける
-
-モデル / effort: Sonnet / medium
-
-CLAUDE.md には「型ヒントは全モジュールに付いている」と書いてあるが、
-実際には次が未注釈:
-
-- `click_utils.py` の `click_common_opts()` の戻り値、内側の
-  `_decorator(func)` の引数と戻り値
-- `mylog.py` の `loggerInit()` の `out=sys.stderr`、`exmsg()` の `ex`
-
-**この 2 ファイルは `ytstreetorgan` / `tmr` と同一**なので、直すなら
-3 プロジェクトで揃える必要がある（TODO-007 / TODO-014）。
-
-（決めること）3 プロジェクトを同時に直すか、この場では CLAUDE.md の
-記述の方を実態に合わせるか。デコレータの型は
-`Callable[..., Any]` で済ませるか `ParamSpec` を使うかも決める。
 
 ---
 
@@ -33,6 +10,7 @@ CLAUDE.md には「型ヒントは全モジュールに付いている」と書�
 1 項目 1 ファイル。`archives/todo/` にある（新しい順）。
 **やらないと決めたものの理由もそこにある。** 蒸し返す前に読むこと。
 
+- [**TODO-024.** `click_utils.py` / `mylog.py` に型注釈を付ける](archives/todo/TODO-024.%20click_utils.py%20と%20mylog.py%20に型注釈を付ける.md)
 - [**TODO-023.** 定数の置き場所と、`deepcopy` をやめる](archives/todo/TODO-023.%20定数の置き場所と、deepcopy%20をやめる.md)
 - [**TODO-022.** `Player` の引数の引き回しを整理する](archives/todo/TODO-022.%20Player%20の引数の引き回しを整理する.md)
 - [**TODO-021.** `midi_writer.py` の型を締める](archives/todo/TODO-021.%20midi_writer.py%20の型を締める.md)

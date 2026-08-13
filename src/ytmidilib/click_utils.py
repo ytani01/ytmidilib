@@ -2,6 +2,9 @@
 # (c) 2026 Yoichi Tanibayashi
 #
 """click の共通オプションユーティリティ"""
+from collections.abc import Callable
+from typing import Any
+
 import click
 
 
@@ -10,10 +13,10 @@ def click_common_opts(
     use_h: bool = True,
     use_d: bool = True,
     use_v: bool = True,
-):
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """共通オプションをまとめたメタデコレータ"""
 
-    def _decorator(func):
+    def _decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         decorators = []
 
         # version option
