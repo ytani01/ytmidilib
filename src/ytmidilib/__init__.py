@@ -18,6 +18,7 @@ from .midi_parser import (
 from .midi_player import Player
 from .midi_utils import (
     DEFAULT_TEMPO,
+    DRUM_CHANNEL,
     FREQ_BASE,
     NOTE_BASE,
     NOTE_N,
@@ -32,7 +33,6 @@ from .midi_visual import (
 )
 from .midi_writer import (
     DEF_TICKS_PER_BEAT,
-    DRUM_CHANNEL,
     transpose,
     transpose_file,
     write,
@@ -54,13 +54,13 @@ if __package__:
         __version__ = '0.0.0'
 
 __all__ = ['__author__', '__date__', '__version__',
-           'DEFAULT_TEMPO',
+           'DEFAULT_TEMPO', 'DRUM_CHANNEL',
            'FREQ_BASE', 'NOTE_BASE', 'NOTE_N', 'note2freq',
            'Parser', 'parse', 'mk_event_list',
            'NoteInfo', 'ParsedMidi', 'NoteEvent', 'TimedEvent',
            'mk_visual', 'format_visual', 'print_visual',
            'VisualData', 'VisualLine',
            'Player',
-           'DEF_TICKS_PER_BEAT', 'DRUM_CHANNEL',
+           'DEF_TICKS_PER_BEAT',
            'write', 'transpose', 'transpose_file',
            'Wav', 'init_mixer', 'quit_mixer']

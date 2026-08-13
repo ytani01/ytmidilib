@@ -1,39 +1,7 @@
 # TODO
 
-**残っている項目: TODO-023 .. TODO-024。** これまでに 22 件を決着させた。
+**残っている項目: TODO-024。** これまでに 23 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る。**番号は `TODO-025` から。**
-
-以下の 2 項目は、全体をあらためて読み直して洗い出したリファクタリング。
-番号の順に優先度の意味は無く、着手する項目は利用者が指定する。
-
----
-
-## TODO-023. 定数の置き場所と、`deepcopy` をやめる
-
-- [ ] `DRUM_CHANNEL` を `midi_utils.py` へ移す
-- [ ] `set_end_time()` の `copy.deepcopy` をやめる
-- [ ] 繰り返している「絞り込むチャンネル」の型に別名を付ける
-
-モデル / effort: Sonnet / low
-
-`DRUM_CHANNEL`（9）は `midi_writer.py` にあるが、MIDI 仕様の定数で、
-`__main__.py`（`--drums` のヘルプ）と `tests/conftest.py` からも使って
-いる。`DEFAULT_TEMPO` を `midi_utils.py` へ移したのと同じ理由が当て
-はまる（TODO-016）。公開 API なので、`__init__.py` の `__all__` と
-`docs/REFERENCE.md` の表も追随させる。
-
-`set_end_time()` の `copy.deepcopy(in_data)` は、スカラーしか持たない
-dataclass には過剰。元のリストを変更しない性質は保ったまま、新しい
-`NoteInfo` を作る形にできる。5 万音で実測:
-
-```
-deepcopy    : 0.284 sec
-replace()   : 0.077 sec
-```
-
-`list[int] | tuple[int, ...] | None` は `midi_parser.py` の
-`parse1()` / `parse()` と、`Parser` の同名メソッドの 4 か所にある。
-TODO-021 と同じく `type` 文で別名を付けられる。
 
 ---
 
@@ -65,6 +33,7 @@ CLAUDE.md には「型ヒントは全モジュールに付いている」と書�
 1 項目 1 ファイル。`archives/todo/` にある（新しい順）。
 **やらないと決めたものの理由もそこにある。** 蒸し返す前に読むこと。
 
+- [**TODO-023.** 定数の置き場所と、`deepcopy` をやめる](archives/todo/TODO-023.%20定数の置き場所と、deepcopy%20をやめる.md)
 - [**TODO-022.** `Player` の引数の引き回しを整理する](archives/todo/TODO-022.%20Player%20の引数の引き回しを整理する.md)
 - [**TODO-021.** `midi_writer.py` の型を締める](archives/todo/TODO-021.%20midi_writer.py%20の型を締める.md)
 - [**TODO-020.** `play -s` で、頭出し位置の秒数だけ無音で待つ](archives/todo/TODO-020.%20play%20-s%20で、頭出し位置の秒数だけ無音で待つ.md)

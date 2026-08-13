@@ -21,6 +21,14 @@ DEFAULT_TEMPO = 500000
 (`midi_writer.write()` の既定値でもある。TODO-016)。
 """
 
+DRUM_CHANNEL = 9
+"""打楽器チャンネル(0始まり)。note が音の高さではなく楽器の種類を表す。
+
+`midi_writer.py` 固有のものではなく MIDI 仕様の定数で、`__main__.py`
+（`--drums` のヘルプ）と `tests/conftest.py` からも使うので、ここに置く
+(`DEFAULT_TEMPO` と同じ理由。TODO-023)。
+"""
+
 
 def note2freq(note: int) -> float:
     """MIDI ノート番号を周波数に変換する

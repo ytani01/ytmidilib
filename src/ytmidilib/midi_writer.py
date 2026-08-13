@@ -17,12 +17,9 @@ import mido
 from loguru import logger
 
 from .midi_parser import NoteInfo
-from .midi_utils import DEFAULT_TEMPO, NOTE_N, clip_range
+from .midi_utils import DEFAULT_TEMPO, DRUM_CHANNEL, NOTE_N, clip_range
 
 DEF_TICKS_PER_BEAT = 480
-
-DRUM_CHANNEL = 9
-"""打楽器チャンネル(0始まり)。note が音の高さではなく楽器の種類を表す"""
 
 type MidiSource = str | os.PathLike[str] | BinaryIO
 """読み込み元。パス、または読み込み可能なバイナリ file-like"""

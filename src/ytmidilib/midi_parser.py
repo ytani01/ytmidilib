@@ -11,9 +11,8 @@ MIDI ファイルを note 単位にパージングする。テキストによる
 __author__ = 'Yoichi Tanibayashi'
 __date__ = '2021/01'
 
-import copy
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, TypedDict
 
 import mido
@@ -85,6 +84,10 @@ class NoteInfo:
         return self.end_time - self.abs_time
 
 
+type ChannelFilter = list[int] | tuple[int, ...] | None
+"""絞り込むチャンネル。`None` なら全チャンネル"""
+
+
 class ParsedMidi(TypedDict):
     """`parse()` の戻り値"""
     channel_set: set[int]
@@ -105,7 +108,7 @@ class TimedEvent(TypedDict):
 
 
 def parse1(midi_obj: mido.MidiFile,
-           channel: list[int] | tuple[int, ...] | None = None
+           channel: ChannelFilter = None
            ) -> tuple[set[int], list[NoteInfo]]:
     """
     後段の処理のために、MIDI 形式を単純に解析する
@@ -171,7 +174,7 @@ def set_end_time(in_data: list[NoteInfo]) -> list[NoteInfo]:
     """
     logger.debug('')
 
-    out_data = copy.deepcopy(in_data)
+    out_data = [replace(ni) for ni in in_data]
     note_start: dict[tuple[int, int], list[int]] = {}
 
     for i, ent in enumerate(out_data):
@@ -215,7 +218,7 @@ def set_end_time(in_data: list[NoteInfo]) -> list[NoteInfo]:
 
 
 def parse(midi_file: str | os.PathLike[str],
-          channel: list[int] | tuple[int, ...] | None = None
+          channel: ChannelFilter = None
           ) -> ParsedMidi:
     """
     MIDI データを解析する
@@ -333,7 +336,7 @@ class Parser:
     # `parse1(...)` はモジュールレベルの関数を指す (再帰ではない)。
 
     def parse1(self, midi_obj: mido.MidiFile,
-               channel: list[int] | tuple[int, ...] | None = None
+               channel: ChannelFilter = None
                ) -> tuple[set[int], list[NoteInfo]]:
         """`parse1()` を呼ぶ"""
         return parse1(midi_obj, channel)
@@ -343,7 +346,7 @@ class Parser:
         return set_end_time(in_data)
 
     def parse(self, midi_file: str | os.PathLike[str],
-              channel: list[int] | tuple[int, ...] | None = None
+              channel: ChannelFilter = None
               ) -> ParsedMidi:
         """`parse()` を呼ぶ"""
         return parse(midi_file, channel)
