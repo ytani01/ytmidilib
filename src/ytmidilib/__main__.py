@@ -14,7 +14,9 @@ from . import (
     Player,
     Wav,
     __version__,
+    mk_visual,
     note2freq,
+    print_visual,
     transpose_file,
 )
 from .click_utils import click_common_opts
@@ -65,9 +67,9 @@ class MidiApp:
         print('channel_set=', parsed_data['channel_set'], flush=True)
 
         if self._visual_flag:
-            v_data = self._parser.mk_visual(parsed_data['note_info'])
+            v_data = mk_visual(parsed_data['note_info'])
             print()
-            self._parser.print_visual(v_data, parsed_data['channel_set'])
+            print_visual(v_data, parsed_data['channel_set'])
 
         if self._parse_only:
             return

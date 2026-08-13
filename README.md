@@ -35,9 +35,9 @@ ytmidilib play MIDIファイル
 自分のプログラムから使う場合:
 
 ```python
-from ytmidilib import Parser, Player
+from ytmidilib import Player, parse
 
-parsed = Parser().parse('song.mid')
+parsed = parse('song.mid')
 
 with Player() as player:
     player.play(parsed)

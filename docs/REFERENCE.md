@@ -18,7 +18,7 @@ MIDI ファイルを **イベント単位ではなく note 単位** にパージ
 - [1. インストール](#1-インストール)
 - [2. クイックスタート](#2-クイックスタート)
 - [3. データ構造](#3-データ構造)
-- [4. パージング — `Parser`](#4-パージング--parser)
+- [4. パージング — `parse()`](#4-パージング--parse)
 - [5. 再生 — `Player`](#5-再生--player)
 - [6. 移調 — `transpose()` / `transpose_file()`](#6-移調--transpose--transpose_file)
 - [7. その他の API](#7-その他の-api)
@@ -47,12 +47,16 @@ uv tool install git+https://github.com/ytani01/ytmidilib.git
 
 ```python
 from ytmidilib import (
-    Parser, NoteInfo, ParsedMidi, VisualData,   # パージング
+    parse, Parser,                              # パージング
+    NoteInfo, ParsedMidi,                       # 解析結果の型
+    mk_event_list, NoteEvent, TimedEvent,       # イベント列
+    mk_visual, format_visual, print_visual,     # 可視化
+    VisualData, VisualLine,
     Player,                                     # 再生
     Wav,                                        # 音源生成
     write, transpose, transpose_file,           # 書き出し・移調
     note2freq,                                  # 変換
-    FREQ_BASE, NOTE_BASE, NOTE_N,               # 定数
+    FREQ_BASE, NOTE_BASE, NOTE_N, DEFAULT_TEMPO,  # 定数
     DEF_TICKS_PER_BEAT, DRUM_CHANNEL,
 )
 ```
@@ -66,9 +70,9 @@ from ytmidilib import (
 ### 2.1 パージングして再生する
 
 ```python
-from ytmidilib import Parser, Player
+from ytmidilib import Player, parse
 
-parsed = Parser().parse('song.mid')
+parsed = parse('song.mid')
 
 with Player() as player:
     player.play(parsed)          # 鳴り終わるまで戻らない
@@ -81,9 +85,9 @@ with Player() as player:
 再生せず、解析結果だけを使う例。**音声デバイスは要らない。**
 
 ```python
-from ytmidilib import Parser
+from ytmidilib import parse
 
-parsed = Parser().parse('song.mid', channel=[0, 1])   # ch 0 と 1 だけ
+parsed = parse('song.mid', channel=[0, 1])            # ch 0 と 1 だけ
 
 print('全チャンネル:', sorted(parsed['channel_set']))
 
@@ -106,7 +110,7 @@ transpose_file('song.mid', 'song_low.mid', -2)        # 2 半音下げる
 
 ### 3.1 `ParsedMidi`
 
-`Parser.parse()` の戻り値。**モジュール間で受け渡す唯一の形式**で、
+`parse()` の戻り値。**モジュール間で受け渡す唯一の形式**で、
 `Player.play()` はこの形の dict を受け取る。
 
 ```python
@@ -131,7 +135,7 @@ player.play(parsed)
 
 ### 3.2 `NoteInfo`
 
-1 つの note を表す。
+1 つの note を表す dataclass。
 
 ```python
 NoteInfo(abs_time: float, channel: int, note: int,
@@ -158,19 +162,28 @@ NoteInfo(abs_time: float, channel: int, note: int,
 start:0000.500 channel:00 note:060 velocity:100 end:0001.000 length:00.50
 ```
 
-`Parser.parse()` が返す `note_info` は、**すべて `velocity > 0` で
+dataclass なので、`==` で **内容が同じかどうか** を比べられる（丸めた
+あとの値で比べる）。`__repr__` も付く。属性は書き換えてよい
+（`frozen` ではない）。代わりに **ハッシュ可能ではない** ので、
+`set` や dict のキーには使えない。
+
+`parse()` が返す `note_info` は、**すべて `velocity > 0` で
 `end_time` が設定済み**。`None` を気にする必要があるのは、自分で
 `NoteInfo` を組み立てたときだけ。
 
 ### 3.3 `VisualData`
 
-`Parser.mk_visual()` の戻り値。テキストによる可視化用。
+`mk_visual()` の戻り値。テキストによる可視化用。
 
 ```python
+class VisualLine(TypedDict):
+    abs_time: float                # その行の時刻 [秒]
+    chr: str                       # note_min .. note_max を 1 文字ずつ
+
 class VisualData(TypedDict):
     note_min: int                  # 使われた最低音のノート番号
     note_max: int                  # 使われた最高音のノート番号
-    data: list[dict[str, Any]]     # {'abs_time': float, 'chr': str}
+    data: list[VisualLine]         # 時刻順の行
 ```
 
 `data` の各要素はその時刻の 1 行分で、`chr` は `note_min` から
@@ -178,14 +191,24 @@ class VisualData(TypedDict):
 
 ---
 
-## 4. パージング — `Parser`
+## 4. パージング — `parse()`
+
+パージングと可視化は、**モジュールレベルの関数**として使う。
+
+```python
+from ytmidilib import parse, mk_visual, print_visual
+```
+
+同じものが `Parser` のメソッドにもある（`Parser` は関数を呼ぶだけの
+クラス。以前のコードのために残してある）。
 
 ```python
 Parser(debug: bool = False)
 ```
 
 `debug` は互換のために残してある引数で、**ログの水準には影響しない**
-（[8 章](#8-ログ)）。
+（[8 章](#8-ログ)）。`Parser` は状態を持たないので、使い回しても、
+呼ぶたびに作っても違いは無い。
 
 ### 4.1 `parse()`
 
@@ -221,10 +244,9 @@ MIDI ファイルを読み、`ParsedMidi` を返す。**これが主役。**
 
 ```python
 from pathlib import Path
-from ytmidilib import Parser
+from ytmidilib import parse
 
-parser = Parser()
-parsed = parser.parse(Path('song.mid'))
+parsed = parse(Path('song.mid'))
 
 print(len(parsed['note_info']), 'notes')
 print('末尾:', max(ni.end_time or 0 for ni in parsed['note_info']), 'sec')
@@ -250,8 +272,8 @@ print_visual(v_data: VisualData, channel_set: set[int]) -> None
 定規で、左端の数字は時刻 [秒]。
 
 ```python
-v_data = parser.mk_visual(parsed['note_info'])
-text = parser.format_visual(v_data, parsed['channel_set'])
+v_data = mk_visual(parsed['note_info'])
+text = format_visual(v_data, parsed['channel_set'])
 print(text)
 ```
 
@@ -278,17 +300,31 @@ CH( 1): B--b
 ### 4.3 `mk_event_list()`
 
 ```python
-mk_event_list(data: list[NoteInfo]) -> list[dict[str, Any]]
+mk_event_list(data: list[NoteInfo]) -> list[TimedEvent]
 ```
 
 note 単位のデータを、時刻順のイベント列へ戻す。`mk_visual()` が使う。
 同時刻のイベントは、同じ note が重ならない範囲でまとめられる。
 
 ```python
+class NoteEvent(TypedDict):
+    note: int
+    channel: int
+    velocity: int              # 0 なら鳴り終わり
+
+class TimedEvent(TypedDict):
+    abs_time: float
+    event: list[NoteEvent]     # 同時刻のもの
+```
+
+```python
 [{'abs_time': 0.0,
   'event': [{'note': 60, 'channel': 0, 'velocity': 100},
             {'note': 64, 'channel': 0, 'velocity': 100}]}, ...]
 ```
+
+`velocity == 0` のエントリは無視する。`end_time` が `None` の音は、
+`write()` と同じく **長さ 0** として扱う。
 
 ---
 
@@ -314,7 +350,7 @@ play(parsed_midi: ParsedMidi,
 
 | 引数 | 意味 |
 |---|---|
-| `parsed_midi` | `Parser.parse()` の戻り値 |
+| `parsed_midi` | `parse()` の戻り値 |
 | `pos_sec` | 頭出しの位置 [秒]。これより前の note は飛ばす |
 | `sec_min` / `sec_max` | 1 音の長さの下限・上限 [秒]。範囲外は丸める |
 | `block` | `True` なら鳴り終わるまで戻らない。`False` なら別スレッドで鳴らし、すぐ戻る |
@@ -330,9 +366,9 @@ play(parsed_midi: ParsedMidi,
 ずれは累積しない。
 
 ```python
-from ytmidilib import Parser, Player
+from ytmidilib import Player, parse
 
-parsed = Parser().parse('song.mid')
+parsed = parse('song.mid')
 
 with Player(rate=44100) as player:
     player.play(parsed, pos_sec=30.0)        # 30 秒目から鳴らす
@@ -350,9 +386,9 @@ close() -> None          # stop() + mixer 終了 + 音源キャッシュ破棄
 
 ```python
 import time
-from ytmidilib import Parser, Player
+from ytmidilib import Player, parse
 
-parsed = Parser().parse('song.mid')
+parsed = parse('song.mid')
 player = Player()
 try:
     player.play(parsed, block=False)         # すぐ戻る
@@ -421,9 +457,9 @@ note は音の高さではなく楽器の種類を表すため。ずらさない
 移調された結果は返さない）。
 
 ```python
-from ytmidilib import Parser, Player, transpose
+from ytmidilib import Player, parse, transpose
 
-parsed = Parser().parse('song.mid')
+parsed = parse('song.mid')
 
 try:
     parsed['note_info'] = transpose(parsed['note_info'], 12)
@@ -521,7 +557,7 @@ pygame.mixer.quit()
 ```python
 write(midi_file, note_info: list[NoteInfo],
       ticks_per_beat: int = DEF_TICKS_PER_BEAT,   # 480
-      tempo: int = 500000) -> None                # usec/beat, 120 BPM
+      tempo: int = DEFAULT_TEMPO) -> None         # 500000 usec/beat
 ```
 
 `NoteInfo` のリストを MIDI ファイルへ書き出す。絶対秒を tick に戻し、
@@ -575,6 +611,7 @@ note2freq(60)    # 261.6255653005986
 | `FREQ_BASE` | `440` | 基準の周波数 [Hz] |
 | `NOTE_BASE` | `69` | 基準のノート番号（A4） |
 | `NOTE_N` | `128` | ノート番号の総数（`0` .. `127`） |
+| `DEFAULT_TEMPO` | `500000` | MIDI 仕様の既定テンポ [usec/beat]（120 BPM 相当）。`set_tempo` が無いファイルの解釈と、`write()` の既定値 |
 | `DEF_TICKS_PER_BEAT` | `480` | `write()` の既定の分解能 |
 | `DRUM_CHANNEL` | `9` | 打楽器チャンネル（0 始まり） |
 
@@ -716,7 +753,7 @@ ytmidilib transpose SRC DST N [-c] [-D]
 
 | 要る | 要らない |
 |---|---|
-| `Player.play()` / `Player.mk_wav()` / `Player.init_mixer()`、`Wav.play()`、CLI の `play` | `Parser` の全メソッド、`transpose()` / `transpose_file()` / `write()`、`Wav()` の生成と `save()`、`note2freq()`、CLI の `parse` / `transpose` |
+| `Player.play()` / `Player.mk_wav()` / `Player.init_mixer()`、`Wav.play()`、CLI の `play` | `parse()` と可視化（`Parser` の全メソッド）、`transpose()` / `transpose_file()` / `write()`、`Wav()` の生成と `save()`、`note2freq()`、CLI の `parse` / `transpose` |
 
 サーバやテストなど、デバイスの無い環境で使うなら右側だけで組み立てる。
 

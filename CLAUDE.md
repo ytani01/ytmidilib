@@ -66,7 +66,7 @@ CI 設定は無いので、上記はローカルで手動実行する。
 
 ## アーキテクチャ
 
-データは `Parser` → dict → `Player` の一方向に流れる。この dict が
+データは `parse()` → dict → `Player` の一方向に流れる。この dict が
 モジュール間で受け渡す唯一の形式:
 
 ```python
@@ -76,7 +76,7 @@ parsed_data = {
 }
 ```
 
-- `midi_parser.py` — `Parser.parse()` が3段階で処理する。
+- `midi_parser.py` — `parse()` が3段階で処理する。
   1. `parse1()`: 全トラックを `mido.merge_tracks()` で1本に合成し、
      `set_tempo` を追跡しつつ tick を絶対秒 (`abs_time`) に変換。
      この時点では note_on/note_off が別々の `NoteInfo` として並ぶ。
@@ -86,8 +86,16 @@ parsed_data = {
      対応する note_off の時刻を開始側エントリの `end_time` に書き戻す。
      閉じられなかった note は最終イベント時刻で打ち切る。
   3. velocity == 0 のエントリを捨てる。
-  `mk_visual()` / `print_visual()` は解析結果のテキスト可視化（`parse -v`）で、
-  再生経路とは独立。チャンネルは `A-Z`(開始) / `a-z`(終了) の文字で表す。
+
+  **処理の本体はモジュールレベルの関数**で、`Parser` はそれを呼ぶだけの
+  クラス（`ytstreetorgan` など、メソッドとして呼んでいる利用側のために
+  残してある。TODO-016）。`NoteInfo` は dataclass で、`__post_init__` が
+  時刻を小数第3位に丸める。
+- `midi_visual.py` — 解析結果のテキスト可視化（`parse -v`）。再生経路とは
+  独立で、音声デバイスは要らない。チャンネルは `A-Z`(開始) / `a-z`(終了) の
+  文字で表す。`Parser` の `mk_visual()` / `format_visual()` /
+  `print_visual()` はここへの委譲（`midi_visual` が `midi_parser` を
+  import するので、循環を避けるためメソッドの中で import している）。
 - `midi_player.py` — `Player.play()` は再生前に `mk_wav()` で**必要な音を
   全部先に生成してキャッシュする**。キャッシュキーは `(note, 丸めた長さ)` で、
   長さは 0.02 秒単位に丸めて種類数を抑えている（`snd_key()`）。
@@ -98,6 +106,8 @@ parsed_data = {
   クリックノイズを消しているのが要点（この処理を外すとブツブツ鳴る）。
   再生は pygame の `sndarray`。
 - `midi_utils.py` — `note2freq()`（A4=440Hz, note 69 基準）と関連定数。
+  MIDI 仕様の既定テンポ `DEFAULT_TEMPO`（120 BPM 相当）もここ。
+  パーサと `write()` の両方が使うため（TODO-016）。
 - `mylog.py` — loguru の薄いラッパー。`loggerInit()` が出力先と水準を
   決め、`exmsg()` が例外を1行の文字列にする。**`ytstreetorgan` /
   `tmr` と同一のファイル**なので、直すときは他のプロジェクトも揃える

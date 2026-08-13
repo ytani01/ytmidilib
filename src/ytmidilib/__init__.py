@@ -6,9 +6,30 @@ midi_tools
 """
 from importlib.metadata import PackageNotFoundError, version
 
-from .midi_parser import NoteInfo, ParsedMidi, Parser, VisualData
+from .midi_parser import (
+    NoteEvent,
+    NoteInfo,
+    ParsedMidi,
+    Parser,
+    TimedEvent,
+    mk_event_list,
+    parse,
+)
 from .midi_player import Player
-from .midi_utils import FREQ_BASE, NOTE_BASE, NOTE_N, note2freq
+from .midi_utils import (
+    DEFAULT_TEMPO,
+    FREQ_BASE,
+    NOTE_BASE,
+    NOTE_N,
+    note2freq,
+)
+from .midi_visual import (
+    VisualData,
+    VisualLine,
+    format_visual,
+    mk_visual,
+    print_visual,
+)
 from .midi_writer import (
     DEF_TICKS_PER_BEAT,
     DRUM_CHANNEL,
@@ -33,8 +54,12 @@ if __package__:
         __version__ = '0.0.0'
 
 __all__ = ['__author__', '__date__', '__version__',
+           'DEFAULT_TEMPO',
            'FREQ_BASE', 'NOTE_BASE', 'NOTE_N', 'note2freq',
-           'Parser', 'NoteInfo', 'ParsedMidi', 'VisualData',
+           'Parser', 'parse', 'mk_event_list',
+           'NoteInfo', 'ParsedMidi', 'NoteEvent', 'TimedEvent',
+           'mk_visual', 'format_visual', 'print_visual',
+           'VisualData', 'VisualLine',
            'Player',
            'DEF_TICKS_PER_BEAT', 'DRUM_CHANNEL',
            'write', 'transpose', 'transpose_file',

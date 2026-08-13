@@ -16,8 +16,8 @@ from typing import Any, BinaryIO
 import mido
 from loguru import logger
 
-from .midi_parser import DEFAULT_TEMPO, NoteInfo
-from .midi_utils import NOTE_N
+from .midi_parser import NoteInfo
+from .midi_utils import DEFAULT_TEMPO, NOTE_N
 
 DEF_TICKS_PER_BEAT = 480
 

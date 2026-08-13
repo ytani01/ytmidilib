@@ -19,8 +19,7 @@ import mido
 import pytest
 from loguru import logger
 
-from ytmidilib import DEF_TICKS_PER_BEAT, DRUM_CHANNEL
-from ytmidilib.midi_parser import DEFAULT_TEMPO
+from ytmidilib import DEF_TICKS_PER_BEAT, DEFAULT_TEMPO, DRUM_CHANNEL
 
 MkMidiFile = Callable[..., Path]
 """`mk_midi_file` fixture の型"""
