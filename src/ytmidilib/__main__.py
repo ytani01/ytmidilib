@@ -65,7 +65,7 @@ class MidiApp:
                  sec_max: float = Player.SEC_MAX,
                  pos_sec: float = 0.0,
                  debug: bool = False) -> None:
-        """ Constructor """
+        """ コンストラクタ """
         self._dbg = debug
         logger.debug('midi_file={}, channel={}', midi_file, channel)
         logger.debug('parse_only={}, visual_flag={}', parse_only, visual_flag)
@@ -86,7 +86,7 @@ class MidiApp:
         self._player = Player(rate=self._rate, debug=self._dbg)
 
     def main(self) -> None:
-        """ main """
+        """ メイン処理 """
         logger.debug('')
 
         parsed_data = self._parser.parse(self._midi_file, self._channel)
@@ -109,7 +109,7 @@ class MidiApp:
                           self._sec_min, self._sec_max)
 
     def end(self) -> None:
-        """ end """
+        """ 終了処理 """
         logger.debug('')
 
         self._player.close()
@@ -123,7 +123,7 @@ class WavApp:
                  rate: int = Wav.DEF_RATE,
                  play_flag: bool = True,
                  debug: bool = False) -> None:
-        """constructor
+        """コンストラクタ
 
         Parameters
         ----------
@@ -151,7 +151,7 @@ class WavApp:
             print(f'MIDI note: {note} -> freq = {self._freq:.3f} Hz')
 
     def main(self) -> None:
-        """main
+        """メイン処理
         """
         logger.debug('')
 
@@ -170,7 +170,7 @@ class WavApp:
 
     def end(self) -> None:
         """
-        Call at the end of program.
+        プログラムの終了時に呼ぶ
         """
         logger.debug('doing ..')
 
@@ -184,7 +184,7 @@ class TransposeApp:
     def __init__(self, src: str, dst: str, n: int,
                  clip: bool = False, drums: bool = False,
                  debug: bool = False) -> None:
-        """ Constructor """
+        """ コンストラクタ """
         self._dbg = debug
         logger.debug('src={}, dst={}, n={}', src, dst, n)
         logger.debug('clip={}, drums={}', clip, drums)
@@ -196,7 +196,7 @@ class TransposeApp:
         self._drums = drums
 
     def main(self) -> None:
-        """ main """
+        """ メイン処理 """
         logger.debug('')
 
         try:
@@ -209,7 +209,7 @@ class TransposeApp:
         print(f'{self._src} -> {self._dst}: {self._n:+d} semitone(s)')
 
     def end(self) -> None:
-        """ end """
+        """ 終了処理 """
         logger.debug('')
 
 
@@ -228,7 +228,7 @@ midilib Apps
 ''')
 @COMMON_OPTS
 def cli(ctx: click.Context, debug: bool) -> None:
-    """ click group """
+    """ click の group """
     # 出力先の設定は run_app() がサブコマンド自身の `--debug` で行う。
     # サブコマンドが無い場合はヘルプを出すだけなのでログは要らない
     if ctx.invoked_subcommand is None:
@@ -248,7 +248,7 @@ MIDI parser
 def parse(ctx: click.Context, midi_file: str, channel: tuple[int, ...],
           visual_flag: bool, debug: bool) -> None:
     """
-    parser main
+    パーサ本体を呼ぶ
     """
     run_app(ctx, debug, lambda: MidiApp(
         midi_file, channel, parse_only=True,
@@ -277,7 +277,7 @@ def play(ctx: click.Context, midi_file: str, pos_sec: float,
          channel: tuple[int, ...], rate: int, sec_min: float,
          sec_max: float, debug: bool) -> None:
     """
-    player main
+    プレーヤー本体を呼ぶ
     """
     run_app(ctx, debug, lambda: MidiApp(
         midi_file, channel, parse_only=False,
@@ -330,7 +330,7 @@ note 以外は変更しない
 def transpose(ctx: click.Context, src: str, dst: str, n: int,
               clip: bool, drums: bool, debug: bool) -> None:
     """
-    transpose main
+    移調本体を呼ぶ
     """
     run_app(ctx, debug, lambda: TransposeApp(
         src, dst, n, clip=clip, drums=drums, debug=debug))

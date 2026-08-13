@@ -1,6 +1,7 @@
 #
 # (c) 2026 Yoichi Tanibayashi
 #
+"""click の共通オプションユーティリティ"""
 import click
 
 

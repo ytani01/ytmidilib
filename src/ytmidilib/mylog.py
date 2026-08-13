@@ -40,13 +40,16 @@ def logLevel(debug: bool = False) -> str:
 
 
 def loggerInit(debug: bool = False, out=sys.stderr) -> None:
-    """logger を初期化する。
+    """logger を初期化する
 
     各 CLI コマンドの先頭で 1 度だけ呼ぶ。
 
-    Args:
-        debug (bool): デバッグ出力を出すか。
-        out: 出力先。既定は標準エラー。
+    Parameters
+    ----------
+    debug: bool
+        デバッグ出力を出すか
+    out
+        出力先。既定は標準エラー
     """
     logger.remove()
     logger.add(out, format=LOG_FMT, level=logLevel(debug))

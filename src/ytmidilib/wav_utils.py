@@ -71,7 +71,7 @@ class Wav:
 
     def __init__(self, freq: float, sec: float = DEF_SEC,
                  rate: int = DEF_RATE, debug: bool = False) -> None:
-        """constructor
+        """コンストラクタ
 
         Parameters
         ----------

@@ -11,9 +11,9 @@ TODO-019 は、全体を読み直して洗い出したリファクタリング�
 
 ## TODO-019. docstring の言語とスタイルを揃える
 
-- [ ] 英語のまま残っている docstring を日本語にする
-- [ ] `mylog.py` / `click_utils.py` の扱いを決める
-- [ ] CLAUDE.md の `snd_key()` の説明を実装に合わせる
+- [x] 英語のまま残っている docstring を日本語にする
+- [x] `mylog.py` / `click_utils.py` の扱いを決める
+- [x] CLAUDE.md の `snd_key()` の説明を実装に合わせる
 
 モデル / effort: Sonnet / low
 
@@ -37,6 +37,8 @@ CLAUDE.md の「長さは 0.02 秒単位に丸めて」は、実装（`snd_key()
 
 （決めること）共有ファイルに手を入れるか、この項目では ytmidilib 固有の
 モジュールだけにするか。
+→ **`mylog.py` / `click_utils.py` も含めて直す。** `ytstreetorgan` /
+`tmr` への同期は別途必要になる旨を承知の上で進める。
 
 ---
 

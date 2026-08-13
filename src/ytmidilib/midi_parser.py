@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class NoteInfo:
-    """parsed MIDI data entity
+    """パージング済みの MIDI データ1件
 
     Attributes
     ----------
@@ -77,7 +77,7 @@ class NoteInfo:
         Returns
         -------
         length: float
-            length of note [sec]。`end_time` が未設定 (None) の場合は 0.0
+            note の長さ [sec]。`end_time` が未設定 (None) の場合は 0.0
         """
         if self.end_time is None:
             return 0.0
@@ -108,7 +108,7 @@ def parse1(midi_obj: mido.MidiFile,
            channel: list[int] | tuple[int, ...] | None = None
            ) -> tuple[set[int], list[NoteInfo]]:
     """
-    parse MIDI format simply for subsequent parsing step
+    後段の処理のために、MIDI 形式を単純に解析する
 
     全トラックを1本に合成し、tick を曲頭からの絶対秒に変換する。
     この段階では note_on / note_off が別々の NoteInfo として並ぶ。
@@ -116,9 +116,9 @@ def parse1(midi_obj: mido.MidiFile,
     Parameters
     ----------
     midi_obj: mido.MidiFile
-        MIDI file obj
+        MIDI ファイルのオブジェクト
     channel: list of int
-        selected channel
+        絞り込むチャンネル
 
     Returns
     -------
@@ -163,7 +163,7 @@ def parse1(midi_obj: mido.MidiFile,
 
 
 def set_end_time(in_data: list[NoteInfo]) -> list[NoteInfo]:
-    """set end time of NoteInfo
+    """NoteInfo の終了時刻を設定する
 
     (channel, note) ごとに開始待ちのインデックスを保持し、
     対応する note_off の時刻を開始側エントリの end_time に書き戻す。
@@ -218,14 +218,14 @@ def parse(midi_file: str | os.PathLike[str],
           channel: list[int] | tuple[int, ...] | None = None
           ) -> ParsedMidi:
     """
-    parse MIDI data
+    MIDI データを解析する
 
     Parameters
     ----------
     midi_file: str or os.PathLike
-        MIDI file name (`pathlib.Path` も可)
-    channel: list of int or None for all channels
-        MIDI channel
+        MIDI ファイル名(`pathlib.Path` も可)
+    channel: list of int or None
+        絞り込む MIDI チャンネル。None なら全チャンネル
 
     Returns
     -------
@@ -318,7 +318,7 @@ class Parser:
     """
 
     def __init__(self, debug: bool = False) -> None:
-        """constructor
+        """コンストラクタ
 
         Parameters
         ----------

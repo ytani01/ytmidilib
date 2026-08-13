@@ -39,7 +39,7 @@ class Player:
     """複数音が重なっても割れないよう、音量をさらに抑える係数"""
 
     def __init__(self, rate: int = DEF_RATE, debug: bool = False) -> None:
-        """ Constructor
+        """ コンストラクタ
 
         Parameters
         ----------
@@ -144,7 +144,7 @@ class Player:
     def play_sound(self, note_info: NoteInfo,
                    sec_min: float, sec_max: float) -> None:
         """
-        play sound
+        音を鳴らす
         """
         key = self.snd_key(note_info, sec_min, sec_max)
 
@@ -156,7 +156,7 @@ class Player:
     def play_th(self, note_q: "queue.Queue[NoteInfo | None]",
                 sec_min: float, sec_max: float) -> None:
         """
-        play thread
+        発音スレッド
 
         キューから受け取ったnoteを発音する。None で終了。
         stop() が呼ばれた場合も、残りを鳴らさずに終了する。
@@ -182,7 +182,7 @@ class Player:
              sec_min: float = SEC_MIN, sec_max: float = SEC_MAX,
              block: bool = True) -> None:
         """
-        play parsed midi data
+        解析済みの MIDI データを再生する
 
         音源の生成 (`mk_wav()`) は `block` によらず、この呼び出しの中で
         先に済ませる。音声デバイスが無ければ、ここでエラーになる。

@@ -23,17 +23,17 @@ DEFAULT_TEMPO = 500000
 
 
 def note2freq(note: int) -> float:
-    """MIDI note number to frequency
+    """MIDI ノート番号を周波数に変換する
 
     Parameters
     ----------
     note: int
-        MIDI note number (A4 = 69 = 440Hz)
+        MIDI ノート番号 (A4 = 69 = 440Hz)
 
     Returns
     -------
     freq: float
-        frequency [Hz]
+        周波数 [Hz]
     """
     logger.debug('note={}', note)
 
