@@ -1,11 +1,33 @@
 # TODO
 
-**残っている項目は無い。** これまでに 13 件を決着させた。
+**残っている項目: TODO-014。** これまでに 13 件を決着させた。
 新しく足すときは「完了済み」の上に節を作る。**番号は `TODO-015` から。**
 
-## **TODO-014** click_utils.pyの導入
+---
 
-- 現在のオプションと click_utils.py のオプションがコンフリクトする場合は個別に判断
+## TODO-014. `click_utils.py` を導入する
+
+- [ ] `__init__.py` に `__version__` を追加する（`__all__` にも）
+- [ ] `__main__.py` の全コマンドを `click_common_opts` に載せ替える
+- [ ] `tests/test_cli.py` に `-V` / `--version` のテストを足す
+- [ ] `docs/REFERENCE.md` のオプション表を更新する
+- [ ] テスト・lint 3 種を通す
+
+`src/ytmidilib/click_utils.py` は置いてあるが、まだどこからも使われて
+いない。`ytstreetorgan` / `tmr` と同一のファイルなので、中身には手を
+入れない（`mylog.py` と同じ扱い）。
+
+決めたこと:
+
+- `-v` は既存を優先し、全コマンドで `use_v=False` にする。`parse -v` は
+  `--visual`、`wav -v` は `--vol` のまま。version は `-V` / `--version` だけ
+- `__version__` は `ytstreetorgan` と同じ `importlib.metadata` 方式
+- `click_common_opts` は `click.pass_context` を含むので、各コマンドの
+  第 1 引数に `ctx` が増える。`cli` group の `@click.pass_context` は
+  二重になるので外す
+- debug の引数名は `dbg` から `debug` へ統一（デコレータ側が固定のため）
+
+モデル / effort: Opus / high（単独）
 
 ---
 
