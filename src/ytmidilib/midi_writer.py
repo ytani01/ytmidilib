@@ -11,7 +11,7 @@ __author__ = 'Yoichi Tanibayashi'
 __date__ = '2026/08'
 
 import os
-from typing import Any, BinaryIO
+from typing import BinaryIO
 
 import mido
 from loguru import logger
@@ -24,8 +24,14 @@ DEF_TICKS_PER_BEAT = 480
 DRUM_CHANNEL = 9
 """打楽器チャンネル(0始まり)。note が音の高さではなく楽器の種類を表す"""
 
+type MidiSource = str | os.PathLike[str] | BinaryIO
+"""読み込み元。パス、または読み込み可能なバイナリ file-like"""
 
-def _load_midi(src: str | os.PathLike[str] | BinaryIO) -> mido.MidiFile:
+type MidiDest = str | os.PathLike[str] | BinaryIO
+"""書き込み先。パス、または書き込み可能なバイナリ file-like"""
+
+
+def _load_midi(src: MidiSource) -> mido.MidiFile:
     """パス、または file-like から `mido.MidiFile` を読み込む"""
     if isinstance(src, (str, os.PathLike)):
         return mido.MidiFile(filename=os.fspath(src))
@@ -34,7 +40,7 @@ def _load_midi(src: str | os.PathLike[str] | BinaryIO) -> mido.MidiFile:
 
 
 def _save_midi(midi_obj: mido.MidiFile,
-               dst: str | os.PathLike[str] | BinaryIO) -> None:
+               dst: MidiDest) -> None:
     """パス、または file-like へ `mido.MidiFile` を保存する"""
     if isinstance(dst, (str, os.PathLike)):
         midi_obj.save(filename=os.fspath(dst))
@@ -141,8 +147,8 @@ def transpose(note_info: list[NoteInfo], n: int,
     return out_data
 
 
-def transpose_file(src: str | os.PathLike[str] | BinaryIO,
-                   dst: str | os.PathLike[str] | BinaryIO,
+def transpose_file(src: MidiSource,
+                   dst: MidiDest,
                    n: int,
                    clip: bool = False, drums: bool = False) -> None:
     """MIDIファイルを移調する
@@ -204,7 +210,7 @@ def transpose_file(src: str | os.PathLike[str] | BinaryIO,
     _save_midi(midi_obj, dst)
 
 
-def write(midi_file: str | os.PathLike[str] | BinaryIO,
+def write(midi_file: MidiDest,
           note_info: list[NoteInfo],
           ticks_per_beat: int = DEF_TICKS_PER_BEAT,
           tempo: int = DEFAULT_TEMPO) -> None:
@@ -244,7 +250,7 @@ def write(midi_file: str | os.PathLike[str] | BinaryIO,
 
     # (tick, velocity==0 が先, note) で並べる。
     # 同時刻では、消音を先に置いて、同じ note の再打鍵と衝突させない
-    events: list[tuple[int, int, int, dict[str, Any]]] = []
+    events: list[tuple[int, int, int, mido.Message]] = []
 
     for ni in note_info:
         if ni.velocity == 0:
@@ -254,12 +260,11 @@ def write(midi_file: str | os.PathLike[str] | BinaryIO,
         end_time = ni.abs_time if ni.end_time is None else ni.end_time
         off_tick = round(mido.second2tick(end_time, ticks_per_beat, tempo))
 
-        events.append((on_tick, 1, ni.note,
-                       {'type': 'note_on', 'channel': ni.channel,
-                        'note': ni.note, 'velocity': ni.velocity}))
-        events.append((off_tick, 0, ni.note,
-                       {'type': 'note_off', 'channel': ni.channel,
-                        'note': ni.note, 'velocity': 0}))
+        events.append((on_tick, 1, ni.note, mido.Message(
+            'note_on', channel=ni.channel,
+            note=ni.note, velocity=ni.velocity)))
+        events.append((off_tick, 0, ni.note, mido.Message(
+            'note_off', channel=ni.channel, note=ni.note, velocity=0)))
 
     events.sort(key=lambda e: (e[0], e[1], e[2]))
 
@@ -272,7 +277,7 @@ def write(midi_file: str | os.PathLike[str] | BinaryIO,
     prev_tick = 0
     for tick, _, _, msg in events:
         # 同時刻のイベントは delta=0 で続ける
-        track.append(mido.Message(time=tick - prev_tick, **msg))
+        track.append(msg.copy(time=tick - prev_tick))
         prev_tick = tick
 
     track.append(mido.MetaMessage('end_of_track', time=0))
