@@ -38,3 +38,20 @@ def note2freq(note: int) -> float:
     logger.debug('note={}', note)
 
     return FREQ_BASE * 2.0 ** ((note - NOTE_BASE) / 12.0)
+
+
+def clip_range[T: (int, float)](num: T, n_min: T, n_max: T) -> T:
+    """num を n_min .. n_max の範囲に丸める
+
+    Parameters
+    ----------
+    num: int or float
+    n_min: int or float
+    n_max: int or float
+
+    Returns
+    -------
+    clipped: int or float
+        num と同じ型
+    """
+    return min(max(num, n_min), n_max)

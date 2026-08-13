@@ -37,7 +37,7 @@ from .midi_writer import (
     transpose_file,
     write,
 )
-from .wav_utils import Wav
+from .wav_utils import Wav, init_mixer, quit_mixer
 
 __author__ = 'Yoichi Tanibayashi'
 __date__ = '2020/12'
@@ -63,4 +63,4 @@ __all__ = ['__author__', '__date__', '__version__',
            'Player',
            'DEF_TICKS_PER_BEAT', 'DRUM_CHANNEL',
            'write', 'transpose', 'transpose_file',
-           'Wav']
+           'Wav', 'init_mixer', 'quit_mixer']

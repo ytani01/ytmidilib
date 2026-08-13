@@ -4,8 +4,10 @@
 """
 main for midi_tools
 """
+from collections.abc import Callable
+from typing import Protocol
+
 import click
-import pygame
 from loguru import logger
 
 from . import (
@@ -14,13 +16,42 @@ from . import (
     Player,
     Wav,
     __version__,
+    init_mixer,
     mk_visual,
     note2freq,
     print_visual,
+    quit_mixer,
     transpose_file,
 )
 from .click_utils import click_common_opts
 from .mylog import loggerInit
+
+
+class App(Protocol):
+    """`main()` / `end()` を持つ、各サブコマンドのアプリ"""
+
+    def main(self) -> None: ...
+    def end(self) -> None: ...
+
+
+def run_app(ctx: click.Context, debug: bool,
+            make_app: Callable[[], App]) -> None:
+    """4 つのサブコマンドで共通の定型処理
+
+    `loggerInit()` してから `make_app()` で App を作って `main()` を呼び、
+    終わったら(例外が出ても) `end()` を呼ぶ。App の生成を `loggerInit()`
+    より後にするのは、コンストラクタ内のログが `--debug` の水準に
+    従わせるため。
+    """
+    loggerInit(debug)
+    logger.debug('command={!r}', ctx.command.name)
+
+    app = make_app()
+    try:
+        app.main()
+    finally:
+        logger.debug('finally')
+        app.end()
 
 
 class MidiApp:
@@ -128,8 +159,7 @@ class WavApp:
 
         if self._play_flag:
             # 再生するときだけ初期化する(保存だけなら音声デバイス不要)
-            if not pygame.mixer.get_init():
-                pygame.mixer.init(frequency=self._rate, channels=1)
+            init_mixer(self._rate)
 
             wav.play(self._vol)
 
@@ -144,8 +174,7 @@ class WavApp:
         """
         logger.debug('doing ..')
 
-        if pygame.mixer.get_init():
-            pygame.mixer.quit()
+        quit_mixer()
 
         logger.debug('done')
 
@@ -198,12 +227,10 @@ COMMON_OPTS = click_common_opts(__version__, use_v=False)
 midilib Apps
 ''')
 @COMMON_OPTS
-def cli(ctx, debug) -> None:
+def cli(ctx: click.Context, debug: bool) -> None:
     """ click group """
-    # 出力先の設定は、アプリケーション側であるここで行う。
-    # `--debug` は各サブコマンドも持つので、そちらで呼び直す
-    loggerInit(debug)
-
+    # 出力先の設定は run_app() がサブコマンド自身の `--debug` で行う。
+    # サブコマンドが無い場合はヘルプを出すだけなのでログは要らない
     if ctx.invoked_subcommand is None:
         print(ctx.get_help())
 
@@ -218,21 +245,14 @@ MIDI parser
               default=False,
               help='Visual flag')
 @COMMON_OPTS
-def parse(ctx, midi_file, channel, visual_flag, debug) -> None:
+def parse(ctx: click.Context, midi_file: str, channel: tuple[int, ...],
+          visual_flag: bool, debug: bool) -> None:
     """
     parser main
     """
-    loggerInit(debug)
-    logger.debug('command={!r}', ctx.command.name)
-
-    app = MidiApp(midi_file, channel, parse_only=True,
-                  visual_flag=visual_flag,
-                  debug=debug)
-    try:
-        app.main()
-    finally:
-        logger.debug('finally')
-        app.end()
+    run_app(ctx, debug, lambda: MidiApp(
+        midi_file, channel, parse_only=True,
+        visual_flag=visual_flag, debug=debug))
 
 
 @cli.command(help='''
@@ -253,23 +273,17 @@ MIDI player
               default=Player.SEC_MAX,
               help=f'max sound length, default={Player.SEC_MAX}')
 @COMMON_OPTS
-def play(ctx, midi_file, pos_sec, channel, rate, sec_min, sec_max,
-         debug) -> None:
+def play(ctx: click.Context, midi_file: str, pos_sec: float,
+         channel: tuple[int, ...], rate: int, sec_min: float,
+         sec_max: float, debug: bool) -> None:
     """
     player main
     """
-    loggerInit(debug)
-    logger.debug('command={!r}', ctx.command.name)
-
-    app = MidiApp(midi_file, channel, parse_only=False,
-                  visual_flag=False, rate=rate,
-                  sec_min=sec_min, sec_max=sec_max, pos_sec=pos_sec,
-                  debug=debug)
-    try:
-        app.main()
-    finally:
-        logger.debug('finally')
-        app.end()
+    run_app(ctx, debug, lambda: MidiApp(
+        midi_file, channel, parse_only=False,
+        visual_flag=False, rate=rate,
+        sec_min=sec_min, sec_max=sec_max, pos_sec=pos_sec,
+        debug=debug))
 
 
 @cli.command(help='''
@@ -290,25 +304,14 @@ Wav format sound tool
               default=False,
               help='dont\'t play flag')
 @COMMON_OPTS
-def wav(ctx, freq, outfile, midi_note_flag, vol, sec, rate,
-        dont_play, debug) -> None:
+def wav(ctx: click.Context, freq: float, outfile: tuple[str, ...],
+        midi_note_flag: bool, vol: float, sec: float, rate: int,
+        dont_play: bool, debug: bool) -> None:
     """サンプル起動用メイン関数
     """
-    loggerInit(debug)
-    logger.debug('command={!r}', ctx.command.name)
-    logger.debug('freq,vol,sec,rate={}', (freq, vol, sec, rate))
-    logger.debug('outfile={}', outfile)
-    logger.debug('midi_note_flag={}', midi_note_flag)
-    logger.debug('dont_play={}', dont_play)
-
-    app = WavApp(freq, outfile, midi_note_flag, vol, sec, rate,
-                 play_flag=not dont_play,
-                 debug=debug)
-    try:
-        app.main()
-    finally:
-        logger.debug('finally')
-        app.end()
+    run_app(ctx, debug, lambda: WavApp(
+        freq, outfile, midi_note_flag, vol, sec, rate,
+        play_flag=not dont_play, debug=debug))
 
 
 @cli.command(context_settings=TRANSPOSE_CONTEXT_SETTINGS, help='''
@@ -324,19 +327,13 @@ note 以外は変更しない
 @click.option('--drums', '-D', 'drums', is_flag=True, default=False,
               help=f'transpose channel {DRUM_CHANNEL} (drums), too')
 @COMMON_OPTS
-def transpose(ctx, src, dst, n, clip, drums, debug) -> None:
+def transpose(ctx: click.Context, src: str, dst: str, n: int,
+              clip: bool, drums: bool, debug: bool) -> None:
     """
     transpose main
     """
-    loggerInit(debug)
-    logger.debug('command={!r}', ctx.command.name)
-
-    app = TransposeApp(src, dst, n, clip=clip, drums=drums, debug=debug)
-    try:
-        app.main()
-    finally:
-        logger.debug('finally')
-        app.end()
+    run_app(ctx, debug, lambda: TransposeApp(
+        src, dst, n, clip=clip, drums=drums, debug=debug))
 
 
 if __name__ == '__main__':

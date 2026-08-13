@@ -15,8 +15,10 @@ import pygame
 from loguru import logger
 
 from .midi_parser import NoteInfo, ParsedMidi
-from .midi_utils import note2freq
+from .midi_utils import clip_range, note2freq
 from .wav_utils import Wav
+from .wav_utils import init_mixer as wav_init_mixer
+from .wav_utils import quit_mixer as wav_quit_mixer
 
 
 class Player:
@@ -29,6 +31,12 @@ class Player:
     SEC_MAX = 1.20  # sec
 
     FIRST_DELAY_MAX = 3  # sec
+
+    VELOCITY_MAX = 128
+    """velocity(0..127)を 0.0 .. 1.0 未満の音量に正規化するときの分母"""
+
+    VOLUME_ATTENUATION = 8
+    """複数音が重なっても割れないよう、音量をさらに抑える係数"""
 
     def __init__(self, rate: int = DEF_RATE, debug: bool = False) -> None:
         """ Constructor
@@ -57,13 +65,9 @@ class Player:
         音源生成/再生の直前に呼ばれる。初期化済みなら何もしないので、
         他所（`WavApp` など）が先に初期化していても二重にはならない。
         音声デバイスが無い環境では、ここで `pygame.error` になる。
+        `wav_utils.init_mixer()` の薄いラッパー。
         """
-        if pygame.mixer.get_init():
-            logger.debug('already initialized: {}', pygame.mixer.get_init())
-            return
-
-        logger.debug('rate={}', self._rate)
-        pygame.mixer.init(frequency=self._rate, channels=1)
+        wav_init_mixer(self._rate)
 
     def close(self) -> None:
         """再生を止め、mixer を終了し、生成済みの音源を捨てる"""
@@ -73,8 +77,7 @@ class Player:
 
         self._snd = {}
 
-        if pygame.mixer.get_init():
-            pygame.mixer.quit()
+        wav_quit_mixer()
 
     def __enter__(self) -> "Player":
         return self
@@ -85,10 +88,12 @@ class Player:
 
     @staticmethod
     def within_range(num: float, n_min: float, n_max: float) -> float:
+        """num を n_min .. n_max の範囲に丸める
+
+        `midi_utils.clip_range()` の薄いラッパー(呼び出し側の互換のため
+        staticmethod として残してある)
         """
-        keep num within range
-        """
-        return min(max(num, n_min), n_max)
+        return clip_range(num, n_min, n_max)
 
     def snd_key(self, note_data: NoteInfo,
                 sec_min: float, sec_max: float) -> tuple[int, float]:
@@ -144,7 +149,8 @@ class Player:
         key = self.snd_key(note_info, sec_min, sec_max)
 
         snd = self._snd[key]
-        snd.set_volume(note_info.velocity / 128 / 8)
+        snd.set_volume(
+            note_info.velocity / self.VELOCITY_MAX / self.VOLUME_ATTENUATION)
         snd.play()
 
     def play_th(self, note_q: "queue.Queue[NoteInfo | None]",

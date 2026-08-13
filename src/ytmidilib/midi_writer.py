@@ -17,12 +17,29 @@ import mido
 from loguru import logger
 
 from .midi_parser import NoteInfo
-from .midi_utils import DEFAULT_TEMPO, NOTE_N
+from .midi_utils import DEFAULT_TEMPO, NOTE_N, clip_range
 
 DEF_TICKS_PER_BEAT = 480
 
 DRUM_CHANNEL = 9
 """打楽器チャンネル(0始まり)。note が音の高さではなく楽器の種類を表す"""
+
+
+def _load_midi(src: str | os.PathLike[str] | BinaryIO) -> mido.MidiFile:
+    """パス、または file-like から `mido.MidiFile` を読み込む"""
+    if isinstance(src, (str, os.PathLike)):
+        return mido.MidiFile(filename=os.fspath(src))
+
+    return mido.MidiFile(file=src)
+
+
+def _save_midi(midi_obj: mido.MidiFile,
+               dst: str | os.PathLike[str] | BinaryIO) -> None:
+    """パス、または file-like へ `mido.MidiFile` を保存する"""
+    if isinstance(dst, (str, os.PathLike)):
+        midi_obj.save(filename=os.fspath(dst))
+    else:
+        midi_obj.save(file=dst)
 
 
 def _shift_note(note: int, channel: int, n: int,
@@ -67,7 +84,7 @@ def _shift_note(note: int, channel: int, n: int,
             f'note out of range: {note} + {n} = {new_note}'
             f' (channel:{channel}{where})')
 
-    return min(max(new_note, 0), NOTE_N - 1), True
+    return clip_range(new_note, 0, NOTE_N - 1), True
 
 
 def transpose(note_info: list[NoteInfo], n: int,
@@ -163,10 +180,7 @@ def transpose_file(src: str | os.PathLike[str] | BinaryIO,
     """
     logger.debug('n={}, clip={}, drums={}', n, clip, drums)
 
-    if isinstance(src, (str, os.PathLike)):
-        midi_obj = mido.MidiFile(filename=os.fspath(src))
-    else:
-        midi_obj = mido.MidiFile(file=src)
+    midi_obj = _load_midi(src)
 
     clip_count = 0
 
@@ -187,10 +201,7 @@ def transpose_file(src: str | os.PathLike[str] | BinaryIO,
         logger.warning('clipped {} note(s) into 0 .. {}',
                        clip_count, NOTE_N - 1)
 
-    if isinstance(dst, (str, os.PathLike)):
-        midi_obj.save(filename=os.fspath(dst))
-    else:
-        midi_obj.save(file=dst)
+    _save_midi(midi_obj, dst)
 
 
 def write(midi_file: str | os.PathLike[str] | BinaryIO,
@@ -266,7 +277,4 @@ def write(midi_file: str | os.PathLike[str] | BinaryIO,
 
     track.append(mido.MetaMessage('end_of_track', time=0))
 
-    if isinstance(midi_file, (str, os.PathLike)):
-        midi_obj.save(filename=os.fspath(midi_file))
-    else:
-        midi_obj.save(file=midi_file)
+    _save_midi(midi_obj, midi_file)

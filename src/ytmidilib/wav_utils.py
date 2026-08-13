@@ -18,6 +18,36 @@ import pygame
 from loguru import logger
 from numpy.typing import NDArray
 
+from .midi_utils import clip_range
+
+
+def init_mixer(rate: int) -> None:
+    """pygame の mixer を初期化する
+
+    初期化済みなら何もしないので、複数箇所から呼んでも二重にはならない。
+    音声デバイスが無い環境では、ここで `pygame.error` になる。
+
+    Parameters
+    ----------
+    rate: int
+        サンプリングレート [Hz]
+    """
+    if pygame.mixer.get_init():
+        logger.debug('already initialized: {}', pygame.mixer.get_init())
+        return
+
+    logger.debug('rate={}', rate)
+    pygame.mixer.init(frequency=rate, channels=1)
+
+
+def quit_mixer() -> None:
+    """pygame の mixer を終了する
+
+    初期化されていなければ何もしない。
+    """
+    if pygame.mixer.get_init():
+        pygame.mixer.quit()
+
 
 class Wav:
     """指定された周波数の sin波 音源データを生成/再生/保存する
@@ -136,7 +166,7 @@ class Wav:
         """
         logger.debug('vol={}', vol)
 
-        fixed_vol = min(max(vol, self.VOL_MIN), self.VOL_MAX)
+        fixed_vol = clip_range(vol, self.VOL_MIN, self.VOL_MAX)
         if fixed_vol != vol:
             logger.warning('fix: vol={} -> {}', vol, fixed_vol)
 
