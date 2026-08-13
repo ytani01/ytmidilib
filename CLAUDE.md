@@ -60,8 +60,9 @@ CI 設定は無いので、上記はローカルで手動実行する。
   残ると以降のテストの出力に混ざるため、`conftest.py` の autouse
   fixture が毎回 `logger.remove()` している
 
-すべてのサブコマンドに `-d` / `--debug` があり、loguru のレベルを
-DEBUG に切り替える。挙動の調査は基本これで足りる。
+すべてのサブコマンドに `-d` / `--debug` があり（`-h` / `--help`、
+`-V` / `--version` も同様）、loguru のレベルを DEBUG に切り替える。
+挙動の調査は基本これで足りる。
 
 ## アーキテクチャ
 
@@ -101,6 +102,10 @@ parsed_data = {
   決め、`exmsg()` が例外を1行の文字列にする。**`ytstreetorgan` /
   `tmr` と同一のファイル**なので、直すときは他のプロジェクトも揃える
   （TODO-007）。
+- `click_utils.py` — `click_common_opts()` が `--version` / `--debug` /
+  `--help` をまとめて付けるメタデコレータ。**`ytstreetorgan` / `tmr` と
+  同一のファイル**なので、`mylog.py` と同じく他のプロジェクトも揃える
+  （TODO-014）。
 
 pygame の mixer はモノラル (`channels=1`) で初期化する。`Player` と
 `WavApp` がそれぞれ `pygame.mixer.init()` を呼ぶ。
@@ -109,6 +114,12 @@ pygame の mixer はモノラル (`channels=1`) で初期化する。`Player` �
 `loggerInit(debug)` を呼び（出力先を決めるのはアプリ側の仕事）、
 `MidiApp` / `WavApp` / `TransposeApp` を生成して
 `main()` → `finally: end()` の形で呼ぶ。
+
+共通オプションは `COMMON_OPTS`（`click_common_opts` を 1 度だけ呼んだ
+もの）を各コマンドに付けて与える。これが `click.pass_context` も含むので、
+**全コマンドの第 1 引数は `ctx`** になる。`-v` は `parse` の `--visual` と
+`wav` の `--vol` が使っているため、version は `-V` だけにしている
+（`use_v=False`。TODO-014）。
 
 ## 慣習
 

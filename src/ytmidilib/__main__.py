@@ -8,7 +8,9 @@ import click
 import pygame
 from loguru import logger
 
-from . import DRUM_CHANNEL, Parser, Player, Wav, note2freq, transpose_file
+from . import (
+    DRUM_CHANNEL, Parser, Player, Wav, __version__, note2freq, transpose_file)
+from .click_utils import click_common_opts
 from .mylog import loggerInit
 
 
@@ -173,30 +175,31 @@ class TransposeApp:
         logger.debug('')
 
 
-CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
-
 # transpose は N に負の値 (-2 など) を取るので、
 # オプションと誤解されないように未知のオプションを引数として扱う
-TRANSPOSE_CONTEXT_SETTINGS = dict(CONTEXT_SETTINGS,
-                                  ignore_unknown_options=True)
+TRANSPOSE_CONTEXT_SETTINGS = dict(ignore_unknown_options=True)
+
+# `-v` は既に parse の `--visual`、wav の `--vol` が使っている。
+# サブコマンドごとに違うと紛らわしいので、version は
+# `-V` / `--version` だけにする (TODO-014)
+COMMON_OPTS = click_common_opts(__version__, use_v=False)
 
 
-@click.group(invoke_without_command=True,
-             context_settings=CONTEXT_SETTINGS, help='''
+@click.group(invoke_without_command=True, help='''
 midilib Apps
 ''')
-@click.pass_context
-def cli(ctx) -> None:
+@COMMON_OPTS
+def cli(ctx, debug) -> None:
     """ click group """
     # 出力先の設定は、アプリケーション側であるここで行う。
-    # `--debug` は各サブコマンドが持つので、そこで呼び直す
-    loggerInit()
+    # `--debug` は各サブコマンドも持つので、そちらで呼び直す
+    loggerInit(debug)
 
     if ctx.invoked_subcommand is None:
         print(ctx.get_help())
 
 
-@cli.command(context_settings=CONTEXT_SETTINGS, help='''
+@cli.command(help='''
 MIDI parser
 ''')
 @click.argument('midi_file', type=click.Path(exists=True))
@@ -205,17 +208,17 @@ MIDI parser
 @click.option('--visual', '-v', 'visual_flag', is_flag=True,
               default=False,
               help='Visual flag')
-@click.option('--debug', '-d', 'dbg', is_flag=True, default=False,
-              help='debug flag')
-def parse(midi_file, channel, visual_flag, dbg) -> None:
+@COMMON_OPTS
+def parse(ctx, midi_file, channel, visual_flag, debug) -> None:
     """
     parser main
     """
-    loggerInit(dbg)
+    loggerInit(debug)
+    logger.debug('command={!r}', ctx.command.name)
 
     app = MidiApp(midi_file, channel, parse_only=True,
                   visual_flag=visual_flag,
-                  debug=dbg)
+                  debug=debug)
     try:
         app.main()
     finally:
@@ -223,7 +226,7 @@ def parse(midi_file, channel, visual_flag, dbg) -> None:
         app.end()
 
 
-@cli.command(context_settings=CONTEXT_SETTINGS, help='''
+@cli.command(help='''
 MIDI player
 ''')
 @click.argument('midi_file', type=click.Path(exists=True))
@@ -240,18 +243,19 @@ MIDI player
 @click.option('--sec_max', '--max', 'sec_max', type=float,
               default=Player.SEC_MAX,
               help=f'max sound length, default={Player.SEC_MAX}')
-@click.option('--debug', '-d', 'dbg', is_flag=True, default=False,
-              help='debug flag')
-def play(midi_file, pos_sec, channel, rate, sec_min, sec_max, dbg) -> None:
+@COMMON_OPTS
+def play(ctx, midi_file, pos_sec, channel, rate, sec_min, sec_max,
+         debug) -> None:
     """
     player main
     """
-    loggerInit(dbg)
+    loggerInit(debug)
+    logger.debug('command={!r}', ctx.command.name)
 
     app = MidiApp(midi_file, channel, parse_only=False,
                   visual_flag=False, rate=rate,
                   sec_min=sec_min, sec_max=sec_max, pos_sec=pos_sec,
-                  debug=dbg)
+                  debug=debug)
     try:
         app.main()
     finally:
@@ -259,7 +263,7 @@ def play(midi_file, pos_sec, channel, rate, sec_min, sec_max, dbg) -> None:
         app.end()
 
 
-@cli.command(context_settings=CONTEXT_SETTINGS, help='''
+@cli.command(help='''
 Wav format sound tool
 ''')
 @click.argument('freq', type=float)
@@ -276,13 +280,13 @@ Wav format sound tool
 @click.option('--dont_play', '-n', 'dont_play', is_flag=True,
               default=False,
               help='dont\'t play flag')
-@click.option('--debug', '-d', 'debug', is_flag=True, default=False,
-              help='debug flag')
-def wav(freq, outfile, midi_note_flag, vol, sec, rate,
+@COMMON_OPTS
+def wav(ctx, freq, outfile, midi_note_flag, vol, sec, rate,
         dont_play, debug) -> None:
     """サンプル起動用メイン関数
     """
     loggerInit(debug)
+    logger.debug('command={!r}', ctx.command.name)
     logger.debug('freq,vol,sec,rate={}', (freq, vol, sec, rate))
     logger.debug('outfile={}', outfile)
     logger.debug('midi_note_flag={}', midi_note_flag)
@@ -310,15 +314,15 @@ note 以外は変更しない
               help='clip note into 0..127 (default: error)')
 @click.option('--drums', '-D', 'drums', is_flag=True, default=False,
               help=f'transpose channel {DRUM_CHANNEL} (drums), too')
-@click.option('--debug', '-d', 'dbg', is_flag=True, default=False,
-              help='debug flag')
-def transpose(src, dst, n, clip, drums, dbg) -> None:
+@COMMON_OPTS
+def transpose(ctx, src, dst, n, clip, drums, debug) -> None:
     """
     transpose main
     """
-    loggerInit(dbg)
+    loggerInit(debug)
+    logger.debug('command={!r}', ctx.command.name)
 
-    app = TransposeApp(src, dst, n, clip=clip, drums=drums, debug=dbg)
+    app = TransposeApp(src, dst, n, clip=clip, drums=drums, debug=debug)
     try:
         app.main()
     finally:

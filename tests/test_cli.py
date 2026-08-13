@@ -17,7 +17,7 @@ import mido
 import pytest
 from click.testing import CliRunner
 
-from ytmidilib import DRUM_CHANNEL
+from ytmidilib import DRUM_CHANNEL, __version__
 from ytmidilib.__main__ import cli
 
 
@@ -52,6 +52,22 @@ def test_cli_help(runner: CliRunner) -> None:
     assert result.exit_code == 0
     for subcmd in ('parse', 'play', 'wav', 'transpose'):
         assert subcmd in result.stdout
+
+
+# --- 共通オプション --------------------------------------------------
+
+@pytest.mark.parametrize('args', [
+    ['-V'], ['--version'],
+    ['parse', '-V'], ['play', '-V'], ['wav', '-V'],
+    # transpose は ignore_unknown_options だが、-V は既知なので効く
+    ['transpose', '-V'],
+])
+def test_version(runner: CliRunner, args: list[str]) -> None:
+    """`-V` / `--version` はどのコマンドでも効く"""
+    result = runner.invoke(cli, args)
+
+    assert result.exit_code == 0
+    assert __version__ in result.stdout
 
 
 # --- parse ----------------------------------------------------------
@@ -182,6 +198,18 @@ def test_wav_save(runner: CliRunner, tmp_path: Path) -> None:
 
     result = runner.invoke(
         cli, ['wav', '-n', '-t', '0.1', '-r', '8000', '440', str(outfile)])
+
+    assert result.exit_code == 0
+    assert outfile.exists()
+
+
+def test_wav_vol(runner: CliRunner, tmp_path: Path) -> None:
+    """`-v` は version ではなく音量(`--vol`)のまま(TODO-014)"""
+    outfile = tmp_path / 'out.wav'
+
+    result = runner.invoke(
+        cli, ['wav', '-n', '-v', '0.5', '-t', '0.1', '-r', '8000',
+              '440', str(outfile)])
 
     assert result.exit_code == 0
     assert outfile.exists()
